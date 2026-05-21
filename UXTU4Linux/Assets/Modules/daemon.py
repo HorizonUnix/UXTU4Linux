@@ -1,7 +1,6 @@
 """
 daemon.py
 """
-
 from __future__ import annotations
 
 import json
@@ -14,6 +13,7 @@ import subprocess
 import sys
 import threading
 import zmq
+import fcntl
 from dataclasses import dataclass
 
 _HERE = os.path.dirname(os.path.realpath(__file__))
@@ -41,6 +41,21 @@ MIN_INTERVAL_SECONDS = cfg.MIN_INTERVAL_SECONDS
 MAX_INTERVAL_SECONDS = cfg.MAX_INTERVAL_SECONDS
 
 _STOP_LOOP_TIMEOUT_S: int = 10
+
+_DAEMON_LOCK_FILE = "/run/uxtu4linux_daemon.lock"
+_daemon_lock_fh: object = None
+
+
+def _acquire_daemon_lock() -> bool:
+    global _daemon_lock_fh
+    try:
+        _daemon_lock_fh = open(_DAEMON_LOCK_FILE, "w")
+        fcntl.flock(_daemon_lock_fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        _daemon_lock_fh.write(str(os.getpid()))
+        _daemon_lock_fh.flush()
+        return True
+    except (IOError, OSError):
+        return False
 
 
 def _validate_ryzenadj_payload(tokens: list[str]) -> list[str]:
@@ -96,6 +111,26 @@ def _on_ac() -> bool:
     return not battery_discharging
 
 
+def _smu_compat_ok() -> bool:
+    try:
+        from Assets.Modules.hardware import ryzen_smu_loaded, secure_boot_enabled
+        if ryzen_smu_loaded():
+            logging.debug("ryzen_smu module loaded. OK!")
+            return True
+        if secure_boot_enabled():
+            logging.warning(
+                "ryzen_smu module not loaded and Secure Boot is ENABLED "
+                "preset will not be applied. "
+                "Disable Secure Boot or sign the module. "
+                "https://github.com/HorizonUnix/UXTU4Linux/wiki/Linux-Troubleshooting#secure-boot-blocking-ryzenadj"
+            )
+            return False
+        logging.debug("ryzen_smu not loaded but Secure Boot is off. Proceeding...")
+    except Exception as exc:
+        logging.debug("Could not check ryzen_smu/SecureBoot state: %s", exc)
+    return True
+
+
 def _load_presets() -> dict:
     from Assets.Modules.power import get_presets
     return get_presets()
@@ -109,11 +144,14 @@ def _run_ryzenadj(args: str, mode: str) -> str:
         logging.error("%s", exc)
         return ""
 
+    logging.debug("ryzenadj cmd: %s %s", cfg.RYZENADJ, " ".join(payload))
+
     result = subprocess.run(
         [cfg.RYZENADJ] + payload,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
+
     out = result.stdout.decode(errors="replace")
     if cfg.is_debug() and result.stderr:
         out += result.stderr.decode(errors="replace")
@@ -178,7 +216,15 @@ class PowerDaemon:
             "apply_saved": self._cmd_apply_saved,
             "shutdown":    self._cmd_shutdown,
             "dmidecode":   self._cmd_dmidecode,
+            "reload_config": self._cmd_reload_config,
         }
+
+    def _cmd_reload_config(self, _msg: dict) -> dict:
+        cfg.load()
+        debug = cfg.is_debug()
+        logging.info("Config reloaded, debug=%s", debug)          # log first
+        logging.getLogger().setLevel(logging.DEBUG if debug else logging.INFO)
+        return {"ok": True}
 
     def _effective_mode_args(
         self, base_mode: str, base_args: str, dynamic: bool
@@ -206,6 +252,10 @@ class PowerDaemon:
             try:
                 eff_mode, eff_args = self._effective_mode_args(mode, args, dynamic)
                 changed = eff_mode != self._last_logged_mode
+                logging.debug(
+                    "Loop tick: effective_mode=%s dynamic=%s on_ac=%s changed=%s",
+                    eff_mode, dynamic, _on_ac(), changed,
+                )
                 self._apply_once(eff_args, eff_mode, log=changed)
                 if changed:
                     self._last_logged_mode = eff_mode
@@ -254,6 +304,11 @@ class PowerDaemon:
         interval    = cfg.parse_interval(msg.get("interval", cfg_default), cfg_default)
         dynamic     = bool(msg.get("dynamic", False))
 
+        logging.debug(
+            "apply_loop requested: mode=%s interval=%ds dynamic=%s",
+            mode, interval, dynamic,
+        )
+
         self._stop_loop()
 
         with self._lock:
@@ -270,9 +325,10 @@ class PowerDaemon:
                 self._running_loop = False
             return {"ok": False, "error": str(exc)}
 
+        display_mode = "Dynamic mode" if dynamic else mode
         logging.info(
-            "Auto-reapply: every %ds%s",
-            interval, ", dynamic" if dynamic else "",
+            "Auto-reapply started: %s, every %ds",
+            display_mode, interval,
         )
 
         self._loop_thread = threading.Thread(
@@ -415,35 +471,47 @@ def _apply_on_start(daemon: PowerDaemon) -> None:
 
     if state.reapply or state.dynamic:
         daemon.start_auto_reapply(state)
-        logging.info(
-            "Started: %s (every %ds%s)",
-            state.mode, state.interval, ", dynamic" if state.dynamic else "",
-        )
+        label = "Dynamic mode" if state.dynamic else state.mode
+        logging.info("Started: %s (every %ds)", label, state.interval)
     else:
         daemon.apply_preset_state_once(state)
 
 
 def main() -> None:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(levelname)s: %(message)s",
-    )
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
+    if not _acquire_daemon_lock():
+        logging.error("Another daemon instance is already running. Exiting.")
+        sys.exit(1)
+
+    cfg.load()
+    log_level = logging.DEBUG if cfg.is_debug() else logging.INFO
+    logging.getLogger().setLevel(log_level)
 
     if cfg.get("Info", "Type") == "Intel":
         logging.error("Intel CPUs are not supported.")
         sys.exit(1)
 
-    from Assets.Modules.hardware import _find_dmidecode
+    from Assets.Modules.hardware import _find_dmidecode, ryzen_smu_loaded, secure_boot_enabled
+
     dmi = _find_dmidecode()
     if dmi is None:
         logging.error("dmidecode not found in PATH — hardware detection will fail.")
         sys.exit(1)
     cfg.DMIDECODE = dmi
 
+    if not ryzen_smu_loaded() and secure_boot_enabled():
+        logging.error(
+            "ryzen_smu module not loaded — Secure Boot is blocking it. "
+            "Preset will not be applied. "
+            "Fix: disable Secure Boot or sign the module with your MOK key. "
+            "https://github.com/HorizonUnix/UXTU4Linux/wiki/Linux-Troubleshooting#secure-boot-blocking-ryzenadj"
+        )
+        sys.exit(1)
+
     logging.info("UXTU4Linux daemon v%s", cfg.LOCAL_VERSION)
 
     daemon = PowerDaemon()
-
     on_ready = (
         (lambda: _apply_on_start(daemon))
         if cfg.get("Settings", "ApplyOnStart", "1") == "1"

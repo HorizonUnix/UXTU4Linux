@@ -1,3 +1,26 @@
+## [0.6.01]
+
+# What's New?
+### New
+- Hardware Information now includes a Battery section
+  - Reads directly from kernel sysfs (/sys/class/power_supply/)
+  - Shows status, charge level, health, cycle count, full charge, design capacity, and charge rate
+  - Supports energy-based (µWh), charge × voltage, and raw mAh reporting depending on driver
+  - Capacity reported in mWh where voltage data is available, mAh otherwise
+  - Correctly identifies system battery over peripheral batteries (e.g. Logitech HID devices)
+
+### Fixed
+- TUI and Daemon now prevent duplicate instances
+- Redundant startup log lines removed
+- Debug setting changes in Settings now reload instantly in the running daemon without a restart
+
+### Improved
+- Daemon logging level now follows the Debug setting at startup (DEBUG vs INFO)
+- Debug mode in the daemon now logs the ryzenadj command and per-loop tick state
+- Secure Boot and ryzen_smu check moved to daemon startup
+- Adjusted presets for AMDCPU
+- Minor UI refinements
+
 ## [0.6.0]
 
 ## What's new?

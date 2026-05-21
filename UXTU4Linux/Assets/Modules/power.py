@@ -224,7 +224,7 @@ def _daemon_status_screen(client) -> None:
     else:
         s = client.status()
         print(f"  Auto reapply : {'ON' if s.get('running_loop') else 'OFF'}")
-        print(f"  Mode         : {'Dynamic' if s.get('dynamic') else s.get('mode', 'N/A')}")
+        print(f"  Preset       : {'Dynamic' if s.get('dynamic') else s.get('mode', 'N/A')}")
         print(f"  Interval     : {s.get('interval', '?')}s")
         print(f"  Power        : {'AC' if s.get('on_ac') else 'Battery'}")
         last = s.get("last_output", "")
@@ -232,6 +232,7 @@ def _daemon_status_screen(client) -> None:
             print(f"\n  {'─'*30}\n")
             for line in last[:500].splitlines():
                 print(f"  {line}")
+            print()
     pause()
 
 

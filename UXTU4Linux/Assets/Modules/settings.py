@@ -1,6 +1,7 @@
 """
 settings.py
 """
+
 from __future__ import annotations
 
 from . import config as cfg
@@ -27,6 +28,13 @@ def _do_toggle(idx: int, items: list) -> None:
     cfg.set(section, key, "0" if was_on else "1")
     cfg.save()
     items[idx] = MenuItem(lbl, "OFF" if was_on else "ON", "toggle")
+
+    if lbl == "Debug":
+        try:
+            from .ipc import get_client
+            get_client().reload_config()
+        except Exception:
+            pass
 
 
 def _settings_items() -> list[MenuItem]:

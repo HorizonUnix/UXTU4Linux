@@ -1,7 +1,6 @@
 """
 setup.py
 """
-
 from __future__ import annotations
 
 import os
@@ -37,7 +36,7 @@ def _apply_defaults() -> None:
     cfg.set("Settings", "ReApply",        "0")
     cfg.set("Settings", "ApplyOnStart",   "1")
     cfg.set("Settings", "DynamicMode",    "0")
-    cfg.set("Settings", "Debug",          "1")
+    cfg.set("Settings", "Debug",          "0")
 
 
 def _step(n: int, total: int, title: str) -> None:
@@ -60,7 +59,7 @@ def run_welcome() -> None:
 
     _step(1, TOTAL, "Welcome")
     print("  UXTU4Linux — AMD Zen power management for Linux")
-    print("  Built on RyzenAdj — inspired by UXTU\n")
+    print("  Built on RyzenAdj and inspired by UXTU\n")
     pause()
 
     _apply_defaults()
@@ -123,7 +122,8 @@ def run_welcome() -> None:
     pause()
 
     clear()
-    print("  Setup complete. UXTU4Linux is ready.\n")
+    print("  Setup complete. UXTU4Linux is ready.")
+    print("  Go to Power Management to pick your preset.\n")
     pause()
 
 

@@ -113,6 +113,102 @@ def _extract(raw: str, field: str) -> str:
     return "N/A"
 
 
+def _read_sysfs(path: str) -> str | None:
+    try:
+        with open(path) as f:
+            return f.read().strip()
+    except OSError:
+        return None
+
+
+def _parse_battery() -> dict | None:
+    bat_path = None
+    try:
+        for entry in sorted(os.listdir("/sys/class/power_supply")):
+            base = f"/sys/class/power_supply/{entry}"
+            if _read_sysfs(f"{base}/type") != "Battery":
+                continue
+            if _read_sysfs(f"{base}/charge_full") or _read_sysfs(f"{base}/energy_full"):
+                bat_path = base
+                break
+    except OSError:
+        return None
+
+    if bat_path is None:
+        return None
+
+    def r(name: str) -> str | None:
+        return _read_sysfs(f"{bat_path}/{name}")
+
+    full = design = None
+    cap_unit = ""
+
+    try:
+        ef  = r("energy_full")
+        efd = r("energy_full_design")
+        if ef and efd:
+            full, design, cap_unit = int(ef) / 1000, int(efd) / 1000, "mWh"
+    except ValueError:
+        pass
+
+    if full is None:
+        try:
+            cf   = r("charge_full")
+            cfd  = r("charge_full_design")
+            volt = r("voltage_min_design") or r("voltage_now")
+            if cf and cfd and volt:
+                v      = int(volt) / 1e6
+                full   = (int(cf)  / 1e6) * v * 1000
+                design = (int(cfd) / 1e6) * v * 1000
+                cap_unit = "mWh"
+        except ValueError:
+            pass
+
+    if full is None:
+        try:
+            cf  = r("charge_full")
+            cfd = r("charge_full_design")
+            if cf and cfd:
+                full, design, cap_unit = int(cf) / 1000, int(cfd) / 1000, "mAh"
+        except ValueError:
+            pass
+
+    health_str = "N/A"
+    if full is not None and design and design > 0:
+        health_str = f"{min(full / design * 100, 100.0):.1f}%"
+
+    status    = r("status") or "Unknown"
+    rate_w    = None
+    power_now = r("power_now")
+    curr_now  = r("current_now")
+    volt_now  = r("voltage_now")
+
+    try:
+        if power_now:
+            rate_w = int(power_now) / 1e6
+        elif curr_now and volt_now:
+            rate_w = (int(curr_now) * int(volt_now)) / 1e12
+    except ValueError:
+        pass
+
+    if rate_w is not None:
+        suffix = (
+            " (charging)"    if status.lower() == "charging"    else
+            " (discharging)" if status.lower() == "discharging" else ""
+        )
+        rate_str = f"{rate_w:.1f} W{suffix}"
+    else:
+        rate_str = "N/A"
+
+    return {
+        "health":      health_str,
+        "cycles":      r("cycle_count") or "N/A",
+        "full_charge": f"{full:.0f} {cap_unit}"   if full   is not None else "N/A",
+        "design_cap":  f"{design:.0f} {cap_unit}" if design is not None else "N/A",
+        "charge_rate": rate_str,
+    }
+
+
 def _parse_device_info() -> dict[str, str]:
     sys_raw   = _dmi_raw("system")
     board_raw = _dmi_raw("baseboard")
@@ -359,6 +455,16 @@ def show_info() -> None:
     row("Model",     mem["part_number"])
     row("Bus width", mem["width"])
     row("Modules",   mem["modules"])
+    
+    bat = _parse_battery()
+
+    if bat:
+        section("Battery")
+        row("Health",      bat["health"])
+        row("Cycles",      bat["cycles"])
+        row("Full charge", bat["full_charge"])
+        row("Design cap.", bat["design_cap"])
+        row("Charge rate", bat["charge_rate"])
 
     print()
     pause()

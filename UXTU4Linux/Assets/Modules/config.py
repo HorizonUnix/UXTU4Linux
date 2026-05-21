@@ -6,8 +6,8 @@ import os
 import sys
 from configparser import ConfigParser
 
-LOCAL_VERSION = "0.6.0"
-LOCAL_BUILD   = "6-linux-5May26-r0"
+LOCAL_VERSION = "0.6.01"
+LOCAL_BUILD   = "6-linux-21May26-r1"
 
 GITHUB_API_URL = "https://api.github.com/repos/HorizonUnix/UXTU4Linux/releases/latest"
 LATEST_VER_URL = "https://github.com/HorizonUnix/UXTU4Linux/releases/latest"

@@ -89,6 +89,8 @@ class DaemonClient:
             return r["output"]
         return ""
 
+    def reload_config(self) -> dict:
+        return self._send({"cmd": "reload_config"}) or {"ok": False}
 
 _client: DaemonClient | None = None
 
