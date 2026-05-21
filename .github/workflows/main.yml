@@ -1,0 +1,46 @@
+name: Push Release
+on: workflow_dispatch
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout latest repository commit
+        uses: actions/checkout@v4.1.1
+        with:
+          show-progress: false
+
+      - id: get-tag
+        name: Fetches latest release tag
+        shell: bash
+        run: |
+          LATEST_TAG="$(grep -m 1 -o '## \[.*\]' Changelog.md | awk -F'[][]' '{print $2}')"
+          echo "TAG=$LATEST_TAG" >> "$GITHUB_ENV"
+
+      - name: Make file executable
+        run: |
+            chmod +x UXTU4Linux/Assets/Linux/ryzenadj
+
+      - name: Rename and Zip folders
+        run: |
+          zip -r UXTU4Linux.zip UXTU4Linux
+        env:
+            TAG: ${{ env.TAG }}
+          
+      - id: generate-notes
+        name: Generate Release Notes
+        shell: bash
+        run: |
+          BODY="$(sed -n "/## \[$TAG\]/,/## \[/p" Changelog.md | sed -e '1,2d;$d')"
+          echo "$BODY" > ${{ github.workspace }}-RELEASE_NOTES.txt
+        env:
+          TAG: ${{ env.TAG }}
+
+      - name: Create release
+        uses: softprops/action-gh-release@v0.1.15
+        with:
+          name: v${{ env.TAG }}
+          tag_name: ${{ env.TAG }}
+          body_path: ${{ github.workspace }}-RELEASE_NOTES.txt
+          files: UXTU4Linux.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

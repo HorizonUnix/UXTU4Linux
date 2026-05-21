@@ -1,0 +1,37 @@
+name: Build ryzenAdj Linux
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: sudo apt install build-essential cmake libpci-dev
+
+    - name: Clone RyzenAdj repository
+      run: git clone https://github.com/FlyGoat/RyzenAdj.git
+
+    - name: Build RyzenAdj
+      run: |
+        cd RyzenAdj
+        rm -r win32
+        mkdir build && cd build
+        cmake -DCMAKE_BUILD_TYPE=Release ..
+        make
+        if [ -d ~/.local/bin ]; then ln -s ryzenadj ~/.local/bin/ryzenadj && echo "symlinked to ~/.local/bin/ryzenadj"; fi
+        if [ -d ~/.bin ]; then ln -s ryzenadj ~/.bin/ryzenadj && echo "symlinked to ~/.bin/ryzenadj"; fi
+
+    - name: Change permissions
+      run: chmod +x RyzenAdj/build/ryzenadj
+
+    - name: Archive production artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ryzenadj-artifact
+        path: RyzenAdj/build/ryzenadj
