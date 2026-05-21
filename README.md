@@ -1,10 +1,11 @@
 <picture><img align="left" src="/Img/Logo.png"/></picture>
+<h4>Powered by RyzenAdj and Python</h4>
  
 [![GitHub Downloads](https://img.shields.io/github/downloads/HorizonUnix/UXTU4Linux/total?style=flat-square&color=blue)](https://github.com/HorizonUnix/UXTU4Linux/releases)
 [![Latest Release](https://img.shields.io/github/v/release/HorizonUnix/UXTU4Linux?style=flat-square&color=green)](https://github.com/HorizonUnix/UXTU4Linux/releases/latest)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-yellow?style=flat-square)](https://www.python.org/)
 [![License](https://img.shields.io/github/license/HorizonUnix/UXTU4Linux?style=flat-square)](LICENSE)
-  
+
 ## Overview
  
 UXTU4Linux is a power management tool for **AMD Ryzen APUs and CPUs** on Linux (and formerly macOS). It wraps [RyzenAdj](https://github.com/FlyGoat/RyzenAdj) with an interactive terminal UI and a background systemd daemon, letting you apply and auto-switch power presets without touching the BIOS.
