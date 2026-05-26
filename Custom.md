@@ -1,6 +1,8 @@
 # Custom args
 
 ```
+Usage: ryzenadj [options]
+
  Ryzen Power Management adjust tool.
 
     -h, --help                            show this help message and exit
@@ -44,7 +46,7 @@ Settings
     --skin-temp-limit=<u32>               Skin Temperature Power Limit (mW)
     --gfx-clk=<u32>                       Forced Clock Speed MHz (Renoir Only)
     --oc-clk=<u32>                        Forced Core Clock Speed MHz (Renoir and up Only)
-    --oc-volt=<u32>                       Forced Core VID: Must follow this calcuation (1.55 - [VID you want to set e.g. 1.25 for 1.25v]) / 0.00625 (Renoir and up Only)
+    --oc-volt=<u32>                       Forced Core VID: Must follow this calculation (1.55 - [VID you want to set e.g. 1.25 for 1.25v]) / 0.00625 (Renoir and up Only)
     --enable-oc                           Enable OC (Renoir and up Only)
     --disable-oc                          Disable OC (Renoir and up Only)
     --set-coall=<u32>                     All core Curve Optimiser
@@ -57,5 +59,5 @@ P-State Functions
 
 WARNING: Use at your own risk!
 By Jiaxun Yang <jiaxun.yang@flygoat.com>, Under LGPL.
-Version: v0.15.0
+Version: v0.19.0
 ```

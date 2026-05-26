@@ -1,6 +1,7 @@
 """
 hardware.py
 """
+
 import glob, os, shutil, subprocess
 from . import config as cfg
 from .ui import clear, pause
@@ -418,13 +419,18 @@ def _compute_codename() -> None:
 def show_info() -> None:
     clear()
 
-    W = 14
+    _B = "\033[1m"
+    _D = "\033[2m"
+    _R = "\033[0m"
+    W  = 14
+
+    print(f"  {_B}Hardware Information{_R}\n")
 
     def row(label: str, value: str) -> None:
-        print(f"  \033[2m{label:<{W}}\033[0m  {value}")
+        print(f"  {_D}{label:<{W}}{_R}  {value}")
 
     def section(title: str) -> None:
-        print(f"\n  \033[1m{title}\033[0m")
+        print(f"  {_B}{title}{_R}")
         print(f"  {'─' * 36}")
 
     dev = _parse_device_info()
@@ -436,6 +442,7 @@ def show_info() -> None:
     proc       = _parse_processor_dmidecode()
     l1, l2, l3 = _parse_cache_sizes()
 
+    print()
     section("Processor")
     row("CPU",        cfg.get("Info", "CPU"))
     row("Producer",   proc["manufacturer"])
@@ -449,16 +456,17 @@ def show_info() -> None:
     row("L3 cache",   l3)
 
     mem = _parse_memory()
+    print()
     section("Memory")
     row("Memory",    mem["summary"])
     row("Producer",  mem["manufacturer"])
     row("Model",     mem["part_number"])
     row("Bus width", mem["width"])
     row("Modules",   mem["modules"])
-    
-    bat = _parse_battery()
 
+    bat = _parse_battery()
     if bat:
+        print()
         section("Battery")
         row("Health",      bat["health"])
         row("Cycles",      bat["cycles"])

@@ -1,3 +1,29 @@
+## [0.6.02]
+
+## What's New
+
+### Custom Preset Editor
+Build your own power preset from scratch using a keyboard-driven editor. Tune temperature limits, power limits, VRM current limits, and iGPU clock speeds. All with real-time hints explaining what each setting does. Presets are saved by name and show up alongside the built-in presets everywhere in the app.
+
+### Automations (Override)
+Set a different preset for AC and battery automatically. When you plug in, the AC preset kicks in. When you unplug, the battery preset takes over. The daemon watches for power state changes in the background. Each slot is optional; leaving one as (None) just uses whatever preset you picked in Power Management for that state.
+
+---
+
+## Improvements
+
+- **Preset descriptions**: hovering over Eco, Balance, Performance, or Extreme now shows a short description of what that preset does.
+- **Hardware Information** now has a proper title and cleaner section layout.
+- **Daemon logs** are cleaner and more readable in `journalctl`.
+- **Version updates** now correctly rank `0.6.1` as newer than `0.6.01`.
+- **Updates preserve your settings**: both `config.ini` and your custom presets are backed up and restored automatically during an update.
+
+---
+
+## Removed
+
+- **Dynamic Mode** has been replaced by Automations. It was limited to Extreme on AC and Eco on battery with no flexibility.
+
 ## [0.6.01]
 
 # What's New?

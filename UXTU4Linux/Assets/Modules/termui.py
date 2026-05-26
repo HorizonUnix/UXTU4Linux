@@ -10,6 +10,8 @@ SHOW_CURSOR = "\033[?25h"
 
 UP    = b"\x1b[A"
 DOWN  = b"\x1b[B"
+RIGHT = b"\x1b[C"
+LEFT  = b"\x1b[D"
 ENTER = b"\r"
 ESC   = b"\x1b"
 

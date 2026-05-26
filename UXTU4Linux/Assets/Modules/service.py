@@ -16,6 +16,8 @@ from .ui import clear, menu, pause, MenuItem
 SERVICE_NAME = "uxtu4linux.service"
 SERVICE_FILE = f"/etc/systemd/system/{SERVICE_NAME}"
 
+_SUDO_PROMPT = "  [sudo] password for %u: "
+
 
 def _has_systemctl() -> bool:
     return subprocess.call(
@@ -29,7 +31,7 @@ def _ensure_venv() -> bool:
     venv_python = cfg.VENV_PYTHON
 
     def _sudo(*args: str) -> int:
-        return subprocess.run(["sudo", *args]).returncode
+        return subprocess.run(["sudo", "-p", _SUDO_PROMPT, *args]).returncode
 
     if not os.path.isfile(venv_python):
         print(f"  Creating venv at {venv_dir} ...")
@@ -55,6 +57,8 @@ def _ensure_venv() -> bool:
     if probe.returncode != 0:
         print(f"  Installing pyzmq into {venv_dir} ...")
         print(f"    (to install manually: sudo {venv_python} -m pip install pyzmq)")
+        def _sudo(*args: str) -> int:
+            return subprocess.run(["sudo", "-p", _SUDO_PROMPT, *args]).returncode
         if _sudo(venv_python, "-m", "pip", "install", "pyzmq", "--quiet") != 0:
             print(f"\n  Failed to install pyzmq.")
             print(f"  Try running manually:")
@@ -91,7 +95,7 @@ def _render_unit() -> str:
 
 
 def _sudo_run(*args: str) -> int:
-    return subprocess.run(["sudo", *args]).returncode
+    return subprocess.run(["sudo", "-p", _SUDO_PROMPT, *args]).returncode
 
 
 def _systemctl(*args: str) -> int:
@@ -107,7 +111,7 @@ def _sudo_write(path: str, content: str) -> bool:
         f.write(content)
         tmp = f.name
     try:
-        r = subprocess.run(["sudo", "mv", tmp, path])
+        r = subprocess.run(["sudo", "-p", _SUDO_PROMPT, "mv", tmp, path])
         return r.returncode == 0
     finally:
         if os.path.exists(tmp):

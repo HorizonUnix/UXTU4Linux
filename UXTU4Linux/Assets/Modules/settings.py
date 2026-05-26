@@ -1,7 +1,6 @@
 """
 settings.py
 """
-
 from __future__ import annotations
 
 from . import config as cfg
@@ -17,6 +16,13 @@ _TOGGLE_MAP = {
     "Software update":              ("Settings", "SoftwareUpdate", "1"),
     "Debug":                        ("Settings", "Debug",          "1"),
 }
+
+
+def ensure_config_files() -> None:
+    cfg.CUSTOM_PRESETS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if not cfg.CUSTOM_PRESETS_PATH.exists():
+        cfg.CUSTOM_PRESETS_PATH.write_text("[]")
+        cfg.CUSTOM_PRESETS_PATH.chmod(0o644)
 
 
 def _do_toggle(idx: int, items: list) -> None:
@@ -97,22 +103,22 @@ def preset_cfg() -> None:
         lbl = items[choice].label
 
         if lbl == "Dynamic mode (recommended)":
-            cfg.set("User",     "Mode",        "Balance")
-            cfg.set("Settings", "DynamicMode", "1")
-            cfg.set("Settings", "ReApply",     "1")
+            cfg.set("User",          "Mode",        "Balance")
+            cfg.set("Automations",   "Enabled",     "1")
+            cfg.set("Automations",   "OnAC",        cfg.AUTOMATION_DEFAULT_ON_AC)
+            cfg.set("Automations",   "OnBattery",   cfg.AUTOMATION_DEFAULT_ON_BATTERY)
+            cfg.set("Settings",      "ReApply",     "1")
             cfg.save()
             return
         elif lbl == "Custom":
             args = ask("ryzenadj arguments")
             if args:
-                cfg.set("User",     "Mode",        "Custom")
-                cfg.set("User",     "CustomArgs",  args)
-                cfg.set("Settings", "DynamicMode", "0")
+                cfg.set("User", "Mode",       "Custom")
+                cfg.set("User", "CustomArgs", args)
                 cfg.save()
             return
         elif lbl in names:
-            cfg.set("User",     "Mode",        lbl)
-            cfg.set("Settings", "DynamicMode", "0")
+            cfg.set("User", "Mode", lbl)
             cfg.save()
             return
 

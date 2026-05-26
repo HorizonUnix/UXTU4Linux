@@ -1,6 +1,7 @@
 """
 setup.py
 """
+
 from __future__ import annotations
 
 import os
@@ -28,15 +29,24 @@ def ensure_binaries_executable() -> None:
 
 
 def _apply_defaults() -> None:
-    cfg.ensure_sections("User", "Settings", "Info")
+    cfg.ensure_sections("User", "Settings", "Info", "Automations")
     if not cfg.get("User", "Mode"):
         cfg.set("User", "Mode", "Balance")
-    cfg.set("Settings", "Time",           "3")
-    cfg.set("Settings", "SoftwareUpdate", "1")
-    cfg.set("Settings", "ReApply",        "0")
-    cfg.set("Settings", "ApplyOnStart",   "1")
-    cfg.set("Settings", "DynamicMode",    "0")
-    cfg.set("Settings", "Debug",          "0")
+    cfg.set("Settings",   "Time",           "3")
+    cfg.set("Settings",   "SoftwareUpdate", "1")
+    cfg.set("Settings",   "ReApply",        "0")
+    cfg.set("Settings",   "ApplyOnStart",   "1")
+    cfg.set("Settings",   "Debug",          "0")
+    cfg.set("Automations", "Enabled",       "0")
+    cfg.set("Automations", "OnAC",          "")
+    cfg.set("Automations", "OnBattery",     "")
+
+
+def _ensure_custom_presets_file() -> None:
+    cfg.CUSTOM_PRESETS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if not cfg.CUSTOM_PRESETS_PATH.exists():
+        cfg.CUSTOM_PRESETS_PATH.write_text("[]")
+        cfg.CUSTOM_PRESETS_PATH.chmod(0o644)
 
 
 def _step(n: int, total: int, title: str) -> None:
@@ -53,7 +63,7 @@ def run_welcome() -> None:
         print(f"  Unsupported OS: {cfg.KERNEL}")
         return
 
-    cfg.ensure_sections("User", "Settings", "Info")
+    cfg.ensure_sections("User", "Settings", "Info", "Automations")
     has_systemd = _has_systemctl()
     TOTAL = 3 if has_systemd else 2
 
@@ -63,13 +73,15 @@ def run_welcome() -> None:
     pause()
 
     _apply_defaults()
+    _ensure_custom_presets_file()
     ensure_binaries_executable()
     cfg.save()
 
     if has_systemd:
         _step(2, TOTAL, "Daemon service")
         print("  The power daemon runs in the background keeping your preset active.")
-        print("  It is required for UXTU4Linux to work properly.\n")
+        print("  It is required for UXTU4Linux to work properly.")
+        print()
         if confirm("Install and enable daemon service"):
             if service_running():
                 restart_service()

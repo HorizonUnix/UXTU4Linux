@@ -1,12 +1,12 @@
 """
 config.py
 """
-
 import os
 import sys
 from configparser import ConfigParser
+from pathlib import Path
 
-LOCAL_VERSION = "0.6.01"
+LOCAL_VERSION = "0.6.02"
 LOCAL_BUILD   = "6-linux-21May26-r1"
 
 GITHUB_API_URL = "https://api.github.com/repos/HorizonUnix/UXTU4Linux/releases/latest"
@@ -14,10 +14,12 @@ LATEST_VER_URL = "https://github.com/HorizonUnix/UXTU4Linux/releases/latest"
 
 _ROOT       = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 ASSETS_DIR  = os.path.join(_ROOT, "Assets")
-CONFIG_PATH = os.path.join(ASSETS_DIR, "config.ini")
-
 MODULES_DIR = os.path.join(ASSETS_DIR, "Modules")
 PRESETS_DIR = os.path.join(ASSETS_DIR, "Presets")
+
+CONFIG_PATH         = os.path.join(ASSETS_DIR, "config.ini")
+CUSTOM_PRESETS_PATH = Path(ASSETS_DIR) / "custom_presets.json"
+
 RYZENADJ = os.path.join(ASSETS_DIR, "Linux", "ryzenadj")
 CMD_FILE  = os.path.realpath(sys.argv[0])
 DMIDECODE = "dmidecode"
@@ -31,6 +33,9 @@ ZMQ_SOCKET_ADDR = f"ipc://{ZMQ_SOCKET_PATH}"
 
 MIN_INTERVAL_SECONDS: int = 1
 MAX_INTERVAL_SECONDS: int = 86400
+
+AUTOMATION_DEFAULT_ON_AC      = "Extreme"
+AUTOMATION_DEFAULT_ON_BATTERY = "Eco"
 
 _cfg           = ConfigParser()
 _loaded_preset = ""
@@ -88,7 +93,8 @@ def instance() -> ConfigParser:
 
 
 REQUIRED: dict[str, list[str]] = {
-    "User":     ["mode"],
-    "Settings": ["time", "dynamicmode", "reapply", "applyonstart", "softwareupdate", "debug"],
-    "Info":     ["cpu", "signature", "architecture", "family", "type"],
+    "User":        ["mode"],
+    "Settings":    ["time", "reapply", "applyonstart", "softwareupdate", "debug"],
+    "Info":        ["cpu", "signature", "architecture", "family", "type"],
+    "Automations": ["enabled", "onac", "onbattery"],
 }

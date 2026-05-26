@@ -1,6 +1,7 @@
 """
 updater.py
 """
+
 import json
 import os
 import shutil
@@ -16,10 +17,16 @@ from .service import restart_service, service_running
 
 
 def _ver_tuple(v: str) -> tuple:
+    parts = []
     try:
-        return tuple(int(x) for x in v.strip().lstrip("v").split("."))
+        for seg in v.strip().lstrip("v").split("."):
+            if len(seg) > 1 and seg.startswith("0"):
+                parts.extend(int(c) for c in seg)
+            else:
+                parts.append(int(seg))
     except ValueError:
         return (0,)
+    return tuple(parts)
 
 
 def get_latest_version() -> str:
@@ -41,21 +48,26 @@ def _do_update() -> None:
     src_dir     = os.path.dirname(assets_dir)
     install_dir = os.path.dirname(src_dir)
 
-    zip_path   = os.path.join(install_dir, "UXTU4Linux.zip")
-    new_folder = os.path.join(install_dir, "UXTU4Linux_new")
-    config_bak = os.path.join(install_dir, "config.ini.bak")
+    zip_path        = os.path.join(install_dir, "UXTU4Linux.zip")
+    new_folder      = os.path.join(install_dir, "UXTU4Linux_new")
+    config_bak      = os.path.join(install_dir, "config.ini.bak")
+    presets_bak     = os.path.join(install_dir, "custom_presets.json.bak")
+    config_src      = os.path.join(assets_dir, "config.ini")
+    presets_src     = os.path.join(assets_dir, "custom_presets.json")
 
     def _sudo(*args: str) -> int:
         return subprocess.run(["sudo", *args]).returncode
 
     try:
-        if os.path.exists(cfg.CONFIG_PATH):
-            shutil.copy2(cfg.CONFIG_PATH, config_bak)
+        if os.path.exists(config_src):
+            shutil.copy2(config_src, config_bak)
+        if os.path.exists(presets_src):
+            shutil.copy2(presets_src, presets_bak)
 
-        print("Downloading update...")
+        print("  Downloading update...")
         urllib.request.urlretrieve(url, zip_path)
 
-        print("Extracting...")
+        print("  Extracting...")
         with zipfile.ZipFile(zip_path, "r") as zf:
             zf.extractall(new_folder)
 
@@ -74,24 +86,26 @@ def _do_update() -> None:
             if os.path.exists(path):
                 subprocess.run(["chmod", "+x", path], check=True)
 
-        new_config = os.path.join(src_dir, "Assets", "config.ini")
+        new_assets = os.path.join(src_dir, "Assets")
         if os.path.exists(config_bak):
-            shutil.move(config_bak, new_config)
+            shutil.move(config_bak, os.path.join(new_assets, "config.ini"))
+        if os.path.exists(presets_bak):
+            shutil.move(presets_bak, os.path.join(new_assets, "custom_presets.json"))
 
         if os.path.exists(zip_path):
             os.remove(zip_path)
 
-        print("Restarting daemon...")
+        print("  Restarting daemon...")
         if service_running():
             restart_service()
 
-        print("Update complete. Relaunching - please close this window.")
+        print("  Update complete. Relaunching — please close this window.")
         os.execv(sys.executable, [sys.executable, launch])
 
     except Exception as e:
-        print(f"Update failed: {e}")
+        print(f"  Update failed: {e}")
         pause()
-        
+
 
 def show_updater() -> None:
     while True:
@@ -100,22 +114,22 @@ def show_updater() -> None:
             latest    = get_latest_version()
             changelog = get_changelog()
         except Exception as e:
-            print(f"Could not fetch release info: {e}")
+            print(f"  Could not fetch release info: {e}")
             pause()
             return
         print("─" * 15 + " Software Update " + "─" * 15)
-        print("A new update is available!\n")
-        print(f"Latest version : {latest}")
-        print(f"\nChangelog:\n{changelog}\n")
-        c = input("Update now? (y/n): ").strip().lower()
+        print("  A new update is available!\n")
+        print(f"  Latest version : {latest}")
+        print(f"\n  Changelog:\n{changelog}\n")
+        c = input("  Update now? (y/n): ").strip().lower()
         if c == "y":
             _do_update()
             raise SystemExit
         elif c == "n":
-            print("Skipping update.")
+            print("  Skipping update.")
             break
         else:
-            print("Please enter 'y' or 'n'.")
+            print("  Please enter 'y' or 'n'.")
 
 
 def check_updates() -> None:
@@ -127,14 +141,14 @@ def check_updates() -> None:
             latest = get_latest_version()
             break
         except Exception as e:
-            print(f"Could not fetch version (attempt {attempt}/{MAX_RETRIES}): {e}")
+            print(f"  Could not fetch version (attempt {attempt}/{MAX_RETRIES}): {e}")
             if attempt < MAX_RETRIES:
                 time.sleep(5)
 
     if latest is None:
         clear()
-        print("Failed to fetch the latest version after multiple retries.")
-        if input("Skip the update check and continue? (y/n): ").strip().lower() != "y":
+        print("  Failed to fetch the latest version after multiple retries.")
+        if input("  Skip the update check and continue? (y/n): ").strip().lower() != "y":
             sys.exit("Quitting.")
         return
 
@@ -146,7 +160,7 @@ def check_updates() -> None:
     elif local > remote:
         clear()
         print("─" * 15 + " Beta Program " + "─" * 15)
-        print("This build is newer than the latest release.")
-        print("It may be unstable and is intended for testing only.\n")
-        if input("Continue? (y/n): ").strip().lower() != "y":
+        print("  This build is newer than the latest release.")
+        print("  It may be unstable and is intended for testing only.\n")
+        if input("  Continue? (y/n): ").strip().lower() != "y":
             sys.exit("Quitting.")

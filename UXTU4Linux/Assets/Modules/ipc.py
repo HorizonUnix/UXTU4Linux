@@ -1,6 +1,7 @@
 """
 ipc.py
 """
+
 from __future__ import annotations
 
 import json
@@ -59,13 +60,13 @@ class DaemonClient:
         return self._send({"cmd": "apply", "args": args, "mode": mode}) \
             or {"ok": False, "error": "daemon not responding"}
 
-    def apply_loop(self, args: str, mode: str, interval: int, dynamic: bool) -> dict:
+    def apply_loop(self, args: str, mode: str, interval: int, automation: bool) -> dict:
         return self._send({
-            "cmd":      "apply_loop",
-            "args":     args,
-            "mode":     mode,
-            "interval": interval,
-            "dynamic":  dynamic,
+            "cmd":        "apply_loop",
+            "args":       args,
+            "mode":       mode,
+            "interval":   interval,
+            "automation": automation,
         }) or {"ok": False, "error": "daemon not responding"}
 
     def stop_loop(self) -> dict:
@@ -73,7 +74,11 @@ class DaemonClient:
 
     def status(self) -> dict:
         return self._send({"cmd": "status"}) or {
-            "ok": False, "running_loop": False, "mode": "?", "on_ac": False,
+            "ok":          False,
+            "running_loop": False,
+            "mode":        "?",
+            "on_ac":       False,
+            "automation":  False,
         }
 
     def apply_saved(self) -> dict:
@@ -91,6 +96,17 @@ class DaemonClient:
 
     def reload_config(self) -> dict:
         return self._send({"cmd": "reload_config"}) or {"ok": False}
+
+    def apply_custom_args(self, args: str) -> dict:
+        return self._send({"cmd": "apply_custom_args", "args": args}) \
+            or {"ok": False, "error": "daemon not responding"}
+
+    def list_custom_presets(self) -> list[str]:
+        r = self._send({"cmd": "list_custom_presets"})
+        if r and r.get("ok"):
+            return r.get("names", [])
+        return []
+
 
 _client: DaemonClient | None = None
 

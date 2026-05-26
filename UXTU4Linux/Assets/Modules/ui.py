@@ -8,7 +8,7 @@ from typing import Literal
 from . import config as cfg
 from . import termui
 
-BANNER = """
+BANNER = r"""
 +----------------------------------------------------------+
 |  _   ___  _______ _   _ _  _   _     _                   |
 | | | | \ \/ /_   _| | | | || | | |   (_)_ __  _   ___  __ |
@@ -32,6 +32,7 @@ class MenuItem:
     hint:  str  = ""
     kind:  Kind = "action"
     key:   str | None = None
+    desc:  str  = ""
 
     def __post_init__(self) -> None:
         if self.key is None:
@@ -55,13 +56,13 @@ class MenuItem:
 
 
 def clear() -> None:
-    subprocess.call("clear", shell=True)
+    subprocess.run("clear", shell=True)
     print(f"{_C}{BANNER}{_R}")
     cpu    = cfg.get("Info", "CPU")
     family = cfg.get("Info", "Family")
     loaded = cfg.get_loaded_preset()
     if cpu and family:
-        print(f"  {_B}{cpu}{_R} {_D}{family}{_R}")
+        print(f"  {_B}{cpu}{_R}  {_D}{family}{_R}")
     if loaded:
         print(f"  {_D}Preset : {loaded}{_R}")
     if cfg.is_debug():
@@ -74,12 +75,12 @@ def pause(msg: str = "Press Enter to continue...") -> None:
 
 
 def confirm(prompt: str) -> bool:
-    return input(f"\n  {prompt} (y/n): ").strip().lower() == "y"
+    return input(f"  {prompt} (y/n): ").strip().lower() == "y"
 
 
 def ask(prompt: str, default: str = "") -> str:
     hint = f" [{default}]" if default else ""
-    val  = input(f"\n  {prompt}{_D}{hint}{_R}: ").strip()
+    val  = input(f"  {prompt}{_D}{hint}{_R}: ").strip()
     return val or default
 
 
@@ -110,8 +111,7 @@ def _nav_step(idx: int, d: int, items: list[MenuItem]) -> int:
 
 
 def render_menu(title: str, subtitle: str, items: list[MenuItem], idx: int) -> list[str]:
-    lines: list[str] = []
-    lines.append(f"  {_B}{title}{_R}")
+    lines: list[str] = [f"  {_B}{title}{_R}"]
     if subtitle:
         for line in subtitle.split("\n"):
             lines.append(f"  {_D}{line}{_R}")
@@ -125,6 +125,10 @@ def render_menu(title: str, subtitle: str, items: list[MenuItem], idx: int) -> l
             lines.append(f"  {_C}▶{_R} {_B}{item.label}{_R}{h}")
         else:
             lines.append(f"    {_D}{item.label}{_R}{h}")
+    active_desc = items[idx].desc if 0 <= idx < len(items) else ""
+    if active_desc:
+        lines.append("")
+        lines.append(f"  {_D}{active_desc}{_R}")
     lines.append("")
     lines.append(f"  {_D}↑/↓ to navigate, Enter to select, Esc to go back{_R}")
     return lines
@@ -182,9 +186,7 @@ def menu(
     on_toggle      = None,
 ) -> int:
     if not termui.is_tty():
-        return _simple_menu(
-            title, items, subtitle=subtitle, on_toggle=on_toggle,
-        )
+        return _simple_menu(title, items, subtitle=subtitle, on_toggle=on_toggle)
 
     clear()
     sys.stdout.write(termui.HIDE_CURSOR)
