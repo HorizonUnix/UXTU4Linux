@@ -8,10 +8,10 @@
 
 ## Overview
 
-UXTU4Linux is a power management tool for **AMD Ryzen APUs and CPUs** on Linux. It wraps [RyzenAdj](https://github.com/FlyGoat/RyzenAdj) with an interactive terminal UI and a background systemd daemon, letting you apply and auto-switch power presets without touching the BIOS.
+UXTU4Linux is a power management tool for **AMD Ryzen APUs** on Linux. It wraps [RyzenAdj](https://github.com/FlyGoat/RyzenAdj) with an interactive terminal UI and a background systemd daemon, letting you apply and auto-switch power presets without touching the BIOS.
 
 **Key features:**
-- Premade presets for a wide range of AMD APUs and desktop CPUs
+- Premade presets for a wide range of AMD APUs
 - Custom Preset Editor: build your own preset with per-field hints and live value adjustment
 - Automations: automatically switch presets when plugging in or unplugging, even without reapply
 - Auto-reapply on a configurable timer via background daemon
