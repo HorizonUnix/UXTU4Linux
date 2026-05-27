@@ -11,13 +11,6 @@ from . import config as cfg
 from .hardware import detect as detect_hardware
 from .ui import clear, confirm, pause
 
-from .service import (
-    install_service,
-    restart_service,
-    service_running,
-    wait_for_daemon_or_warn,
-)
-
 
 def ensure_binaries_executable() -> None:
     for path in [cfg.RYZENADJ]:
@@ -31,22 +24,21 @@ def ensure_binaries_executable() -> None:
 def _apply_defaults() -> None:
     cfg.ensure_sections("User", "Settings", "Info", "Automations")
     if not cfg.get("User", "Mode"):
-        cfg.set("User", "Mode", "Balance")
-    cfg.set("Settings",   "Time",           "3")
-    cfg.set("Settings",   "SoftwareUpdate", "1")
-    cfg.set("Settings",   "ReApply",        "0")
-    cfg.set("Settings",   "ApplyOnStart",   "1")
-    cfg.set("Settings",   "Debug",          "0")
-    cfg.set("Automations", "Enabled",       "0")
-    cfg.set("Automations", "OnAC",          "")
-    cfg.set("Automations", "OnBattery",     "")
+        cfg.set_config("User", "Mode", "Balance")
+    cfg.set_config("Settings",   "Time",           "3")
+    cfg.set_config("Settings",   "SoftwareUpdate", "1")
+    cfg.set_config("Settings",   "ReApply",        "0")
+    cfg.set_config("Settings",   "ApplyOnStart",   "1")
+    cfg.set_config("Settings",   "Debug",          "0")
+    cfg.set_config("Automations", "Enabled",       "0")
+    cfg.set_config("Automations", "OnAC",          "")
+    cfg.set_config("Automations", "OnBattery",     "")
 
 
 def _ensure_custom_presets_file() -> None:
     cfg.CUSTOM_PRESETS_PATH.parent.mkdir(parents=True, exist_ok=True)
     if not cfg.CUSTOM_PRESETS_PATH.exists():
         cfg.CUSTOM_PRESETS_PATH.write_text("[]")
-        cfg.CUSTOM_PRESETS_PATH.chmod(0o644)
 
 
 def _step(n: int, total: int, title: str) -> None:

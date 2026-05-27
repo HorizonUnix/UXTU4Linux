@@ -116,13 +116,3 @@ def get_client() -> DaemonClient:
     if _client is None:
         _client = DaemonClient()
     return _client
-
-
-def require_daemon() -> DaemonClient:
-    client = get_client()
-    if not client.ping():
-        raise RuntimeError(
-            "Daemon is not running.\n"
-            "Enable it with:  sudo systemctl enable --now uxtu4linux.service"
-        )
-    return client

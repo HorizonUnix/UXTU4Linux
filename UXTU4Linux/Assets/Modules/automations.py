@@ -6,7 +6,7 @@ from __future__ import annotations
 import logging
 
 from . import config as cfg
-from .ui import clear, pause, confirm, menu, MenuItem
+from .ui import clear, pause, menu, MenuItem
 
 
 def automation_enabled() -> bool:
@@ -22,40 +22,28 @@ def get_battery_preset() -> str:
 
 
 def set_ac_preset(name: str) -> None:
-    cfg.set("Automations", "OnAC", name)
+    cfg.set_config("Automations", "OnAC", name)
     cfg.save()
     logging.info("Automations: AC preset set to %r", name)
 
 
 def set_battery_preset(name: str) -> None:
-    cfg.set("Automations", "OnBattery", name)
+    cfg.set_config("Automations", "OnBattery", name)
     cfg.save()
     logging.info("Automations: Battery preset set to %r", name)
 
 
 def enable_automations() -> None:
-    cfg.set("Automations", "Enabled", "1")
+    cfg.set_config("Automations", "Enabled", "1")
     cfg.save()
     logging.info("Automations: enabled")
 
 
 def disable_automations() -> None:
-    cfg.set("Automations", "Enabled", "0")
+    cfg.set_config("Automations", "Enabled", "0")
     cfg.save()
     logging.info("Automations: disabled")
 
-
-def get_active_automation(on_ac: bool) -> tuple[str, str] | None:
-    if not automation_enabled():
-        return None
-    preset_name = get_ac_preset() if on_ac else get_battery_preset()
-    if not preset_name:
-        return None
-    args = _resolve_args(preset_name)
-    if args is None:
-        logging.warning("Automations: preset %r not found, skipping.", preset_name)
-        return None
-    return preset_name, args
 
 
 def _resolve_args(preset_name: str) -> str | None:

@@ -95,11 +95,11 @@ def apply_smu(args: str, user_mode: str, *, save_to_config: bool = True) -> None
         return
 
     if save_to_config and user_mode != "Custom":
-        cfg.set("User", "Mode", user_mode)
+        cfg.set_config("User", "Mode", user_mode)
         cfg.save()
     elif save_to_config and user_mode == "Custom":
-        cfg.set("User", "Mode", "Custom")
-        cfg.set("User", "CustomArgs", args)
+        cfg.set_config("User", "Mode", "Custom")
+        cfg.set_config("User", "CustomArgs", args)
         cfg.save()
 
     client = get_client()
@@ -126,7 +126,7 @@ def update_reapply_interval(val: str) -> bool:
     if not val.isdigit():
         return False
     clamped = str(cfg.parse_interval(val, default=3))
-    cfg.set("Settings", "Time", clamped)
+    cfg.set_config("Settings", "Time", clamped)
     cfg.save()
     from .ipc import get_client
     client = get_client()
@@ -199,12 +199,7 @@ def build_menu_items(state: PowerState) -> list[MenuItem]:
     auto_hint   = _automation_hint(state)
     select_hint = f"[OVERRIDE] {auto_hint}" if auto_hint else state.mode
 
-    items: list[MenuItem] = []
-
-    if auto_hint:
-        items.append(MenuItem("⚠ Automations override active", kind="disabled"))
-
-    items += [
+    items: list[MenuItem] = [
         MenuItem("Select preset",    select_hint, key="select_preset"),
         MenuItem("Custom arguments",              key="custom_args"),
         MenuItem("─",                kind="separator"),
@@ -224,7 +219,7 @@ def build_menu_items(state: PowerState) -> list[MenuItem]:
 
 
 def set_current_preset(name: str, args: str) -> None:
-    cfg.set("User", "Mode", name)
+    cfg.set_config("User", "Mode", name)
     cfg.save()
     apply_smu(args, name, save_to_config=False)
 
@@ -238,10 +233,11 @@ _PRESET_HINTS: dict[str, str] = {
 
 
 def _select_preset_menu(presets: dict, builtin_names: list[str], custom_names: list[str], current: str) -> None:
+    actual_current = _dn(cfg.get("User", "Mode"))
     items: list[MenuItem] = [
         MenuItem(
             n,
-            hint = "",
+            hint = "← current" if n == actual_current else "",
             desc = _PRESET_HINTS.get(n, ""),
             key  = n,
         )
@@ -250,12 +246,16 @@ def _select_preset_menu(presets: dict, builtin_names: list[str], custom_names: l
     if custom_names:
         items.append(MenuItem("─", kind="separator"))
         items += [
-            MenuItem(n.removesuffix("_custom_preset"), key=n)
+            MenuItem(
+                n.removesuffix("_custom_preset"),
+                hint = "← current" if n == actual_current else "",
+                key  = n,
+            )
             for n in custom_names
         ]
     items += [MenuItem("─", kind="separator"), MenuItem("Back", key="back")]
 
-    choice = menu("Select Preset", items, subtitle=f"Current: {current.removesuffix('_custom_preset')}")
+    choice = menu("Select Preset", items)
     if choice == -1 or items[choice].key == "back":
         return
 
@@ -293,13 +293,13 @@ def _daemon_status_screen(client) -> None:
 def _stop_loop_screen(state: PowerState, client) -> PowerState:
     if client.ping():
         client.stop_loop()
-    cfg.set("Settings", "ReApply", "0")
+    cfg.set_config("Settings", "ReApply", "0")
     cfg.save()
     return PowerState(mode=state.mode, automation=state.automation, loop=False, interval=state.interval)
 
 
 def _start_loop_screen(state: PowerState, client) -> PowerState:
-    cfg.set("Settings", "ReApply", "1")
+    cfg.set_config("Settings", "ReApply", "1")
     cfg.save()
     if client.ping():
         client.apply_saved()

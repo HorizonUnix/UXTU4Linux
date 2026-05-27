@@ -4,7 +4,7 @@ settings.py
 from __future__ import annotations
 
 from . import config as cfg
-from .ui import menu, clear, ask, pause, confirm, MenuItem
+from .ui import menu, clear, confirm, MenuItem
 
 
 def _tog(section: str, key: str, default: str = "0") -> str:
@@ -22,7 +22,6 @@ def ensure_config_files() -> None:
     cfg.CUSTOM_PRESETS_PATH.parent.mkdir(parents=True, exist_ok=True)
     if not cfg.CUSTOM_PRESETS_PATH.exists():
         cfg.CUSTOM_PRESETS_PATH.write_text("[]")
-        cfg.CUSTOM_PRESETS_PATH.chmod(0o644)
 
 
 def _do_toggle(idx: int, items: list) -> None:
@@ -31,7 +30,7 @@ def _do_toggle(idx: int, items: list) -> None:
         return
     section, key, default = _TOGGLE_MAP[lbl]
     was_on = cfg.get(section, key, default) == "1"
-    cfg.set(section, key, "0" if was_on else "1")
+    cfg.set_config(section, key, "0" if was_on else "1")
     cfg.save()
     items[idx] = MenuItem(lbl, "OFF" if was_on else "ON", "toggle")
 
@@ -82,55 +81,6 @@ def settings_menu() -> None:
             _do_toggle(choice, items)
         elif lbl == "Reset all":
             _reset_all()
-
-
-def preset_cfg() -> None:
-    from .power import get_presets
-    presets = get_presets()
-    names   = list(presets.keys())
-
-    items: list[MenuItem] = (
-        [MenuItem("Dynamic mode (recommended)", "auto AC/battery")]
-        + [MenuItem(n) for n in names]
-        + [MenuItem("Custom", "manual ryzenadj args"), MenuItem("Back")]
-    )
-
-    while True:
-        choice = menu("Choose a preset", items, subtitle="You can change this later in Power Management")
-        if choice == -1 or items[choice].label == "Back":
-            return
-
-        lbl = items[choice].label
-
-        if lbl == "Dynamic mode (recommended)":
-            cfg.set("User",          "Mode",        "Balance")
-            cfg.set("Automations",   "Enabled",     "1")
-            cfg.set("Automations",   "OnAC",        cfg.AUTOMATION_DEFAULT_ON_AC)
-            cfg.set("Automations",   "OnBattery",   cfg.AUTOMATION_DEFAULT_ON_BATTERY)
-            cfg.set("Settings",      "ReApply",     "1")
-            cfg.save()
-            return
-        elif lbl == "Custom":
-            args = ask("ryzenadj arguments")
-            if args:
-                cfg.set("User", "Mode",       "Custom")
-                cfg.set("User", "CustomArgs", args)
-                cfg.save()
-            return
-        elif lbl in names:
-            cfg.set("User", "Mode", lbl)
-            cfg.save()
-            return
-
-
-def sleep_cfg() -> None:
-    from .power import update_reapply_interval
-    clear()
-    current = cfg.get("Settings", "Time", "3")
-    val = ask("Reapply interval in seconds", default=current)
-    if not update_reapply_interval(val):
-        print("\n  Must be a whole number.")
-        pause()
 
 
 def _reset_all() -> None:

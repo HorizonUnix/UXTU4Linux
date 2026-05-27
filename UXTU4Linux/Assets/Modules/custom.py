@@ -1,6 +1,7 @@
 """
 custom.py
 """
+
 from __future__ import annotations
 
 import copy
@@ -181,7 +182,6 @@ def load_custom_presets() -> list[dict]:
 def _save_custom_presets(presets: list[dict]) -> None:
     cfg.CUSTOM_PRESETS_PATH.parent.mkdir(parents=True, exist_ok=True)
     cfg.CUSTOM_PRESETS_PATH.write_text(json.dumps(presets, indent=2))
-    cfg.CUSTOM_PRESETS_PATH.chmod(0o644)
 
 
 def fields_to_record(base_name: str, fields: list[dict]) -> dict:
@@ -248,7 +248,7 @@ def delete_preset(display_name: str) -> None:
     changed = False
 
     if cfg.get("User", "Mode") in (internal_name, base):
-        cfg.set("User", "Mode", "Balance")
+        cfg.set_config("User", "Mode", "Balance")
         changed = True
         logging.info("Active preset deleted — User.Mode reset to Balance.")
 
@@ -256,19 +256,19 @@ def delete_preset(display_name: str) -> None:
     bat_slot = cfg.get("Automations", "OnBattery", "")
 
     if ac_slot in (internal_name, base):
-        cfg.set("Automations", "OnAC", "")
+        cfg.set_config("Automations", "OnAC", "")
         ac_slot = ""
         changed = True
         logging.info("Automation OnAC slot cleared (preset deleted).")
 
     if bat_slot in (internal_name, base):
-        cfg.set("Automations", "OnBattery", "")
+        cfg.set_config("Automations", "OnBattery", "")
         bat_slot = ""
         changed = True
         logging.info("Automation OnBattery slot cleared (preset deleted).")
 
     if not ac_slot and not bat_slot:
-        cfg.set("Automations", "Enabled", "0")
+        cfg.set_config("Automations", "Enabled", "0")
         logging.info("Both automation slots empty — automations disabled.")
         changed = True
 
@@ -341,7 +341,7 @@ def _render_editor(
     lines += [
         f"  {'─' * 48}",
         f"  {_D}[S] Save  [L] Load  [D] Delete{_R}",
-        f"  {_D}Space to toggle,  ←/→ to adjust,  ↑/↓ to navigate,  Esc to go back{_R}",
+        f"  {_D}Space to toggle, ←/→ to adjust, ↑/↓ to navigate, Esc to go back{_R}",
     ]
     return lines
 

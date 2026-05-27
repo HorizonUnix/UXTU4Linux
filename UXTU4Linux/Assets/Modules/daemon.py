@@ -1,7 +1,6 @@
 """
 daemon.py
 """
-
 from __future__ import annotations
 
 import json
@@ -57,8 +56,13 @@ def _acquire_daemon_lock() -> bool:
         fcntl.flock(_daemon_lock_fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
         _daemon_lock_fh.write(str(os.getpid()))
         _daemon_lock_fh.flush()
+        import atexit
+        atexit.register(_daemon_lock_fh.close)
         return True
     except (IOError, OSError):
+        if _daemon_lock_fh is not None:
+            _daemon_lock_fh.close()
+            _daemon_lock_fh = None
         return False
 
 
@@ -138,7 +142,7 @@ def _resolve_preset_args(preset_name: str) -> tuple[str, str] | None:
 
 
 def _run_ryzenadj(args: str, mode: str) -> str:
-    raw_payload = mode.split() if args == "Custom" else args.split()
+    raw_payload = args.split()
     try:
         payload = _validate_ryzenadj_payload(raw_payload)
     except ValueError as exc:

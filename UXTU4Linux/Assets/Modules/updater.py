@@ -30,13 +30,13 @@ def _ver_tuple(v: str) -> tuple:
 
 
 def get_latest_version() -> str:
-    url = urllib.request.urlopen(cfg.LATEST_VER_URL).geturl()
+    url = urllib.request.urlopen(cfg.LATEST_VER_URL, timeout=10).geturl()
     return url.rstrip("/").split("/")[-1]
 
 
 def get_changelog() -> str:
     req  = urllib.request.Request(cfg.GITHUB_API_URL)
-    data = json.loads(urllib.request.urlopen(req).read())
+    data = json.loads(urllib.request.urlopen(req, timeout=10).read())
     return data.get("body", "No changelog available.")
 
 

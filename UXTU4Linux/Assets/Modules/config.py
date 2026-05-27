@@ -2,26 +2,23 @@
 config.py
 """
 import os
-import sys
 from configparser import ConfigParser
 from pathlib import Path
 
-LOCAL_VERSION = "0.6.02"
-LOCAL_BUILD   = "6-linux-26May26-r2"
+
+LOCAL_VERSION = "0.6.03"
+LOCAL_BUILD   = "6-linux-27May26-r3"
 
 GITHUB_API_URL = "https://api.github.com/repos/HorizonUnix/UXTU4Linux/releases/latest"
 LATEST_VER_URL = "https://github.com/HorizonUnix/UXTU4Linux/releases/latest"
 
-_ROOT       = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-ASSETS_DIR  = os.path.join(_ROOT, "Assets")
-MODULES_DIR = os.path.join(ASSETS_DIR, "Modules")
-PRESETS_DIR = os.path.join(ASSETS_DIR, "Presets")
+_ROOT      = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+ASSETS_DIR = os.path.join(_ROOT, "Assets")
 
 CONFIG_PATH         = os.path.join(ASSETS_DIR, "config.ini")
 CUSTOM_PRESETS_PATH = Path(ASSETS_DIR) / "custom_presets.json"
 
 RYZENADJ = os.path.join(ASSETS_DIR, "Linux", "ryzenadj")
-CMD_FILE  = os.path.realpath(sys.argv[0])
 DMIDECODE = "dmidecode"
 KERNEL    = os.uname().sysname
 
@@ -33,9 +30,6 @@ ZMQ_SOCKET_ADDR = f"ipc://{ZMQ_SOCKET_PATH}"
 
 MIN_INTERVAL_SECONDS: int = 1
 MAX_INTERVAL_SECONDS: int = 86400
-
-AUTOMATION_DEFAULT_ON_AC      = "Extreme"
-AUTOMATION_DEFAULT_ON_BATTERY = "Eco"
 
 _cfg           = ConfigParser()
 _loaded_preset = ""
@@ -58,7 +52,7 @@ def get_loaded_preset() -> str:
     return _loaded_preset
 
 
-def load():
+def load() -> ConfigParser:
     _cfg.read(CONFIG_PATH)
     return _cfg
 
@@ -67,7 +61,7 @@ def get(section: str, key: str, fallback: str = "") -> str:
     return _cfg.get(section, key, fallback=fallback)
 
 
-def set(section: str, key: str, value: str) -> None:
+def set_config(section: str, key: str, value: str) -> None:
     if not _cfg.has_section(section):
         _cfg.add_section(section)
     _cfg.set(section, key, value)

@@ -393,7 +393,7 @@ def _cpu_type(family: str, arch: str) -> str:
 def detect() -> None:
     check_binaries()
     for key, field in {"CPU": "Version", "Signature": "Signature"}.items():
-        cfg.set("Info", key, _dmi(field))
+        cfg.set_config("Info", key, _dmi(field))
     _compute_codename()
     cfg.save()
 
@@ -406,14 +406,14 @@ def _compute_codename() -> None:
         cpu_family = int(words[words.index("Family") + 1].rstrip(","))
         cpu_model  = int(words[words.index("Model")  + 1].rstrip(","))
     except (ValueError, IndexError):
-        cfg.set("Info", "Architecture", "Unknown")
-        cfg.set("Info", "Family",       "Unknown")
-        cfg.set("Info", "Type",         "Unknown")
+        cfg.set_config("Info", "Architecture", "Unknown")
+        cfg.set_config("Info", "Family",       "Unknown")
+        cfg.set_config("Info", "Type",         "Unknown")
         return
     arch, family = _resolve_codename(raw_cpu, cpu_family, cpu_model)
-    cfg.set("Info", "Architecture", arch)
-    cfg.set("Info", "Family",       family)
-    cfg.set("Info", "Type",         _cpu_type(family, arch))
+    cfg.set_config("Info", "Architecture", arch)
+    cfg.set_config("Info", "Family",       family)
+    cfg.set_config("Info", "Type",         _cpu_type(family, arch))
 
 
 def show_info() -> None:

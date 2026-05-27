@@ -62,7 +62,7 @@ def clear() -> None:
     family = cfg.get("Info", "Family")
     loaded = cfg.get_loaded_preset()
     if cpu and family:
-        print(f"  {_B}{cpu}{_R}  {_D}{family}{_R}")
+        print(f"  {_B}{cpu}{_R} {_D}{family}{_R}")
     if loaded:
         print(f"  {_D}Preset : {loaded}{_R}")
     if cfg.is_debug():
