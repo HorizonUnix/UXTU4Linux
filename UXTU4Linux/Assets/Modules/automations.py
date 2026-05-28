@@ -173,7 +173,8 @@ def automations_menu() -> None:
                 set_ac_preset(chosen)
                 if not chosen and not get_battery_preset():
                     disable_automations()
-                _notify_daemon()
+                if automation_enabled():
+                    _notify_daemon()
 
         elif key == "set_bat":
             clear()
@@ -182,7 +183,8 @@ def automations_menu() -> None:
                 set_battery_preset(chosen)
                 if not chosen and not get_ac_preset():
                     disable_automations()
-                _notify_daemon()
+                if automation_enabled():
+                    _notify_daemon()
 
         elif key == "info":
             _show_info()

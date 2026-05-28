@@ -62,7 +62,6 @@ def _acquire_daemon_lock() -> bool:
     except (IOError, OSError):
         if _daemon_lock_fh is not None:
             _daemon_lock_fh.close()
-            _daemon_lock_fh = None
         return False
 
 

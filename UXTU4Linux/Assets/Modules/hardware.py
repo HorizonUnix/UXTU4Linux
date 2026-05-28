@@ -1,19 +1,10 @@
 """
 hardware.py
 """
-
 import glob, os, shutil, subprocess
 from . import config as cfg
 from .ui import clear, pause
 
-RYZEN_FAMILY = [
-    "Unknown", "SummitRidge", "PinnacleRidge", "RavenRidge", "Dali", "Pollock",
-    "Picasso", "FireFlight", "Matisse", "Renoir", "Lucienne", "VanGogh",
-    "Mendocino", "Vermeer", "Cezanne_Barcelo", "Rembrandt", "Raphael",
-    "DragonRange", "PhoenixPoint", "PhoenixPoint2", "HawkPoint", "HawkPoint2",
-    "SonomaValley", "GraniteRidge", "FireRange", "StrixHalo", "StrixPoint",
-    "KrackanPoint", "KrackanPoint2",
-]
 
 _SBIN_PATHS = "/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/sbin:/usr/local/bin"
 
@@ -390,11 +381,51 @@ def _cpu_type(family: str, arch: str) -> str:
     return "Amd_Apu"
 
 
+def _lspci_vga() -> str:
+    try:
+        result = subprocess.run(
+            ["lspci"],
+            capture_output=True, text=True, timeout=5,
+        )
+        lines = [l for l in result.stdout.splitlines() if "VGA" in l or "Display" in l]
+        return "\n".join(lines).lower()
+    except Exception:
+        return ""
+
+
+def _has_discrete_rx7700s() -> bool:
+    vga = _lspci_vga()
+    return "7700s" in vga or "rx 7700s" in vga
+
+
+def _detect_framework_variant() -> str:
+    sys_raw  = _dmi_raw("system")
+    product  = _extract(sys_raw, "Product Name").lower()
+    mfr      = _extract(sys_raw, "Manufacturer").lower()
+
+    if "framework" not in mfr:
+        return ""
+
+    if "laptop 16" in product and "7040" in product:
+        if _has_discrete_rx7700s():
+            return "AMDFrameworkLaptop16Ryzen7040_RX7700S"
+        return "AMDFrameworkLaptop16Ryzen7040"
+
+    if "laptop 13" in product and ("7040" in product or "ai 300" in product or "ryzen ai 300" in product):
+        return "AMDFrameworkLaptop13Ryzen7040_RyzenAI300"
+
+    return ""
+
+
 def detect() -> None:
     check_binaries()
     for key, field in {"CPU": "Version", "Signature": "Signature"}.items():
         cfg.set_config("Info", key, _dmi(field))
     _compute_codename()
+
+    variant = _detect_framework_variant()
+    cfg.set_config("Info", "Variant", variant)
+
     cfg.save()
 
 

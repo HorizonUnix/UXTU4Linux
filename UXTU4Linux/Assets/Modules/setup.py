@@ -47,7 +47,7 @@ def _step(n: int, total: int, title: str) -> None:
 
 
 def run_welcome() -> None:
-    from .service import _has_systemctl, install_service, restart_service, wait_for_daemon_or_warn, wait_for_daemon
+    from .service import _has_systemctl, install_service, restart_service, wait_for_daemon_or_warn, wait_for_daemon, service_running
     from .ipc import get_client
 
     if cfg.KERNEL not in ("Linux",):
@@ -87,10 +87,10 @@ def run_welcome() -> None:
         pause()
     else:
         _step(2, TOTAL, "Daemon service")
-        from .service import _daemon_script, _python
+        from .service import _daemon_script, _python, _ensure_venv
+        _ensure_venv()
         print("  systemd is not available on this system.")
-        print("  The daemon must be started manually before running UXTU4Linux.\n")
-        print("  In a separate terminal, run:\n")
+        print("  Start the daemon in a separate terminal:\n")
         print(f"    sudo {_python()} {_daemon_script()}\n")
         print("  Waiting for the daemon to become available...")
         print("  (start it now, then come back here)\n")

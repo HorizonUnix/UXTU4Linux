@@ -3,11 +3,9 @@ power.py
 """
 from __future__ import annotations
 
-import importlib
 from dataclasses import dataclass
 
 from . import config as cfg
-from .hardware import RYZEN_FAMILY
 from .ui import menu, clear, ask, pause, MenuItem
 
 
@@ -17,63 +15,18 @@ def _strip_cpu_name(raw: str) -> str:
     return raw
 
 
-def _family_idx(name: str) -> int:
-    try:
-        return RYZEN_FAMILY.index(name)
-    except ValueError:
-        return -1
-
-
-def _preset_module_name(cpu_type: str, family: str, cpu_model: str, raw_cpu: str) -> str:
-    is_ryzen9 = "Ryzen 9" in raw_cpu
-
-    if cpu_type == "Amd_Apu":
-        if _family_idx(family) < _family_idx("Matisse"):
-            if any(s in cpu_model for s in ("U", "e", "Ce")):
-                return "AMDAPUPreMatisse_U_e_Ce"
-            if "H" in cpu_model:   return "AMDAPUPreMatisse_H"
-            if "GE" in cpu_model:  return "AMDAPUPreMatisse_GE"
-            if "G" in cpu_model:   return "AMDAPUPreMatisse_G"
-            return "AMDCPU"
-        else:
-            if family in ("DragonRange", "FireRange"): return "AMDAPUDragonFireRange"
-            if family == "StrixHalo":                  return "AMDAPUStrixHalo"
-            if family == "Mendocino" and "U" in cpu_model: return "AMDAPUPreMatisse_U_e_Ce"
-            if "U" in cpu_model or ("AI" in cpu_model and "HX" not in cpu_model):
-                return "AMDAPUPostMatisse_U"
-            if "HX" in cpu_model:  return "AMDAPUPostMatisse_HX"
-            if "HS" in cpu_model:  return "AMDAPUPostMatisse_HS"
-            if "H" in cpu_model:   return "AMDAPUPostMatisse_H"
-            if "GE" in cpu_model:  return "AMDAPUPostMatisse_GE"
-            if "G" in cpu_model:   return "AMDAPUPostMatisse_G"
-            return "AMDCPU"
-
-    if cpu_type == "Amd_Desktop_Cpu":
-        if _family_idx(family) < _family_idx("Raphael"):
-            if "E"   in cpu_model: return "AMDCPUPreRaphael_E"
-            if "X3D" in cpu_model: return "AMDCPUPreRaphael_X3D"
-            if "X"   in cpu_model and is_ryzen9: return "AMDCPUPreRaphael_X9"
-            if "X"   in cpu_model: return "AMDCPUPreRaphael_X"
-            return "AMDCPUPreRaphael"
-        else:
-            if "E"   in cpu_model: return "AMDCPU_E"
-            if "X3D" in cpu_model: return "AMDCPU_X3D"
-            if "X"   in cpu_model and is_ryzen9: return "AMDCPU_X9"
-            return "AMDCPU"
-
-    return "AMDCPU"
-
-
 def get_presets() -> dict:
-    raw_cpu   = cfg.get("Info", "CPU")
-    family    = cfg.get("Info", "Family")
-    cpu_type  = cfg.get("Info", "Type")
+    from .presets import get_preset, get_preset_label, to_dict
+
+    raw_cpu = cfg.get("Info", "CPU")
+    family = cfg.get("Info", "Family")
+    cpu_type = cfg.get("Info", "Type")
+    variant = cfg.get("Info", "Variant")
     cpu_model = _strip_cpu_name(raw_cpu)
-    mod_name  = _preset_module_name(cpu_type, family, cpu_model, raw_cpu)
-    full_mod  = f"Assets.Presets.{mod_name}"
-    module    = importlib.import_module(full_mod)
-    cfg.set_loaded_preset(full_mod)
-    return module.PRESETS
+
+    preset = get_preset(cpu_type, family, cpu_model, raw_cpu, variant)
+    cfg.set_loaded_preset(get_preset_label(cpu_type, family, cpu_model, raw_cpu, variant))
+    return to_dict(preset)
 
 
 def get_all_presets() -> dict:
@@ -110,9 +63,9 @@ def apply_smu(args: str, user_mode: str, *, save_to_config: bool = True) -> None
         pause()
         return
 
-    interval   = cfg.parse_interval(cfg.get("Settings", "Time", "3"), default=3)
+    interval = cfg.parse_interval(cfg.get("Settings", "Time", "3"), default=3)
     automation = cfg.get("Automations", "Enabled", "0") == "1"
-    reapply    = cfg.get("Settings", "ReApply", "0") == "1"
+    reapply = cfg.get("Settings", "ReApply", "0") == "1"
 
     if reapply:
         client.apply_loop(args=args, mode=user_mode, interval=interval, automation=automation)
@@ -137,10 +90,10 @@ def update_reapply_interval(val: str) -> bool:
 
 @dataclass
 class PowerState:
-    mode:       str
+    mode: str
     automation: bool
-    loop:       bool
-    interval:   int
+    loop: bool
+    interval: int
 
 
 def _dn(name: str) -> str:
@@ -149,10 +102,10 @@ def _dn(name: str) -> str:
 
 def load_power_state() -> PowerState:
     automation = cfg.get("Automations", "Enabled", "0") == "1"
-    interval   = cfg.parse_interval(cfg.get("Settings", "Time", "3"), default=3)
+    interval = cfg.parse_interval(cfg.get("Settings", "Time", "3"), default=3)
     try:
         from .ipc import get_client
-        s    = get_client().status()
+        s = get_client().status()
         mode = "Automations" if automation else _dn(s.get("mode") or cfg.get("User", "Mode"))
         loop = s.get("running_loop", False)
     except Exception:
@@ -164,28 +117,28 @@ def load_power_state() -> PowerState:
 def _refresh_state_from_daemon(state: PowerState, client) -> PowerState:
     cfg.load()
     try:
-        s          = client.status()
+        s = client.status()
         automation = cfg.get("Automations", "Enabled", "0") == "1"
         return PowerState(
-            mode       = "Automations" if automation else _dn(s.get("mode") or state.mode),
-            automation = automation,
-            loop       = s.get("running_loop", state.loop),
-            interval   = state.interval,
+            mode="Automations" if automation else _dn(s.get("mode") or state.mode),
+            automation=automation,
+            loop=s.get("running_loop", state.loop),
+            interval=state.interval,
         )
     except Exception:
         automation = cfg.get("Automations", "Enabled", "0") == "1"
         return PowerState(
-            mode       = "Automations" if automation else state.mode,
-            automation = automation,
-            loop       = state.loop,
-            interval   = state.interval,
+            mode="Automations" if automation else state.mode,
+            automation=automation,
+            loop=state.loop,
+            interval=state.interval,
         )
 
 
 def _automation_hint(state: PowerState) -> str:
     if not state.automation:
         return ""
-    ac_name  = _dn(cfg.get("Automations", "OnAC", ""))
+    ac_name = _dn(cfg.get("Automations", "OnAC", ""))
     bat_name = _dn(cfg.get("Automations", "OnBattery", ""))
     parts = []
     if ac_name:
@@ -196,24 +149,24 @@ def _automation_hint(state: PowerState) -> str:
 
 
 def build_menu_items(state: PowerState) -> list[MenuItem]:
-    auto_hint   = _automation_hint(state)
+    auto_hint = _automation_hint(state)
     select_hint = f"[OVERRIDE] {auto_hint}" if auto_hint else state.mode
 
     items: list[MenuItem] = [
-        MenuItem("Select preset",    select_hint, key="select_preset"),
-        MenuItem("Custom arguments",              key="custom_args"),
-        MenuItem("─",                kind="separator"),
+        MenuItem("Select preset", select_hint, key="select_preset"),
+        MenuItem("Custom arguments", key="custom_args"),
+        MenuItem("─", kind="separator"),
     ]
 
     if state.loop:
-        items.append(MenuItem("Stop reapply",     "",                    key="stop_reapply"))
+        items.append(MenuItem("Stop reapply", "", key="stop_reapply"))
         items.append(MenuItem("Reapply interval", f"{state.interval}s", key="reapply_interval"))
     else:
         items.append(MenuItem("Start reapply", key="start_reapply"))
 
     items += [
         MenuItem("Daemon status", key="daemon_status"),
-        MenuItem("Back",          key="back"),
+        MenuItem("Back", key="back"),
     ]
     return items
 
@@ -237,9 +190,9 @@ def _select_preset_menu(presets: dict, builtin_names: list[str], custom_names: l
     items: list[MenuItem] = [
         MenuItem(
             n,
-            hint = "← current" if n == actual_current else "",
-            desc = _PRESET_HINTS.get(n, ""),
-            key  = n,
+            hint="← current" if n == actual_current else "",
+            desc=_PRESET_HINTS.get(n, ""),
+            key=n,
         )
         for n in builtin_names
     ]
@@ -248,8 +201,8 @@ def _select_preset_menu(presets: dict, builtin_names: list[str], custom_names: l
         items += [
             MenuItem(
                 n.removesuffix("_custom_preset"),
-                hint = "← current" if n == actual_current else "",
-                key  = n,
+                hint="← current" if n == actual_current else "",
+                key=n,
             )
             for n in custom_names
         ]
@@ -270,7 +223,7 @@ def _daemon_status_screen(client) -> None:
         print("  Daemon is not running.")
         print("  sudo systemctl enable --now uxtu4linux.service")
     else:
-        s    = client.status()
+        s = client.status()
         auto = s.get("automation", False)
         print(f"  Auto reapply : {'ON' if s.get('running_loop') else 'OFF'}")
         if auto:
@@ -324,10 +277,10 @@ def _custom_args_menu(state: PowerState, client) -> PowerState:
     if args:
         apply_smu(args, "Custom", save_to_config=True)
     return PowerState(
-        mode       = "Custom" if args else state.mode,
-        automation = False    if args else state.automation,
-        loop       = state.loop,
-        interval   = state.interval,
+        mode="Custom" if args else state.mode,
+        automation=False if args else state.automation,
+        loop=state.loop,
+        interval=state.interval,
     )
 
 
@@ -335,14 +288,14 @@ def preset_menu() -> None:
     from .ipc import get_client
     from .custom import get_custom_preset_names
 
-    client   = get_client()
-    state    = load_power_state()
+    client = get_client()
+    state = load_power_state()
     last_idx = 0
 
     def _do_select_preset(s: PowerState) -> PowerState:
         builtin_presets = get_presets()
-        custom_names    = get_custom_preset_names()
-        all_presets     = get_all_presets()
+        custom_names = get_custom_preset_names()
+        all_presets = get_all_presets()
         _select_preset_menu(all_presets, list(builtin_presets.keys()), custom_names, s.mode)
         return s
 
@@ -360,7 +313,7 @@ def preset_menu() -> None:
     }
 
     while True:
-        items  = build_menu_items(state)
+        items = build_menu_items(state)
         choice = menu(
             "Power Management", items,
             selected=min(last_idx, len(items) - 1),
@@ -369,7 +322,7 @@ def preset_menu() -> None:
             return
 
         last_idx = choice
-        item     = items[choice]
+        item = items[choice]
 
         if item.key == "back":
             return

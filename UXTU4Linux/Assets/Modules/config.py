@@ -5,7 +5,6 @@ import os
 from configparser import ConfigParser
 from pathlib import Path
 
-
 LOCAL_VERSION = "0.6.03"
 LOCAL_BUILD   = "6-linux-27May26-r3"
 
@@ -89,6 +88,6 @@ def instance() -> ConfigParser:
 REQUIRED: dict[str, list[str]] = {
     "User":        ["mode"],
     "Settings":    ["time", "reapply", "applyonstart", "softwareupdate", "debug"],
-    "Info":        ["cpu", "signature", "architecture", "family", "type"],
+    "Info":        ["cpu", "signature", "architecture", "family", "type", "variant"],
     "Automations": ["enabled", "onac", "onbattery"],
 }

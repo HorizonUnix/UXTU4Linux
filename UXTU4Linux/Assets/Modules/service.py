@@ -228,10 +228,8 @@ def daemon_menu() -> None:
     if not _has_systemctl():
         clear()
         print("  systemd is not available on this system.\n")
-        print("  UXTU4Linux's service management requires systemd.")
-        print("  Start the daemon manually:\n")
+        print("  Start the daemon in a separate terminal:\n")
         print(f"    sudo {_python()} {_daemon_script()}\n")
-        print("  To auto-start on boot, consult your init system's documentation.")
         pause()
         return
 
