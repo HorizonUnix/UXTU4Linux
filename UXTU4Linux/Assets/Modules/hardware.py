@@ -3,7 +3,7 @@ hardware.py
 """
 import glob, os, shutil, subprocess
 from . import config as cfg
-from .ui import clear, pause
+from .ui import clear, pause, _B, _D, _R
 
 
 _SBIN_PATHS = "/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/sbin:/usr/local/bin"
@@ -11,7 +11,7 @@ _SBIN_PATHS = "/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/sbin:/usr/local/bin"
 
 def _find_dmidecode() -> str | None:
     user_path = os.environ.get("PATH", "")
-    combined  = user_path + (":" if user_path else "") + _SBIN_PATHS
+    combined = user_path + (":" if user_path else "") + _SBIN_PATHS
     seen: list[str] = []
     for p in combined.split(":"):
         if p and p not in seen:
@@ -24,10 +24,10 @@ def check_binaries() -> None:
     if dmi is None:
         print(
             "\n  dmidecode is not installed.\n\n"
-            "  Debian/Ubuntu : sudo apt install dmidecode\n"
-            "  Fedora/RHEL   : sudo dnf install dmidecode\n"
-            "  Arch          : sudo pacman -S dmidecode\n"
-            "  openSUSE      : sudo zypper install dmidecode\n"
+            f"  Debian/Ubuntu : {_B}sudo apt install dmidecode{_R}\n"
+            f"  Fedora/RHEL   : {_B}sudo dnf install dmidecode{_R}\n"
+            f"  Arch          : {_B}sudo pacman -S dmidecode{_R}\n"
+            f"  openSUSE      : {_B}sudo zypper install dmidecode{_R}\n"
         )
         raise SystemExit(1)
     cfg.DMIDECODE = dmi
@@ -76,10 +76,10 @@ def check_system_compat() -> None:
     if not secure_boot_enabled():
         return
     clear()
-    print("  ryzen_smu module not loaded — Secure Boot is blocking it.\n")
+    print("  ryzen_smu module not loaded and Secure Boot is on.\n")
     print("  Fix options:")
     print("    1. Disable Secure Boot in UEFI firmware")
-    print("    2. Sign the module with your MOK key\n")
+    print("    2. Install and sign the module with your MOK key\n")
     print("  https://github.com/HorizonUnix/UXTU4Linux/wiki/Linux-Troubleshooting#secure-boot-blocking-ryzenadj")
     pause()
 
@@ -136,7 +136,7 @@ def _parse_battery() -> dict | None:
     cap_unit = ""
 
     try:
-        ef  = r("energy_full")
+        ef = r("energy_full")
         efd = r("energy_full_design")
         if ef and efd:
             full, design, cap_unit = int(ef) / 1000, int(efd) / 1000, "mWh"
@@ -145,12 +145,12 @@ def _parse_battery() -> dict | None:
 
     if full is None:
         try:
-            cf   = r("charge_full")
-            cfd  = r("charge_full_design")
+            cf = r("charge_full")
+            cfd = r("charge_full_design")
             volt = r("voltage_min_design") or r("voltage_now")
             if cf and cfd and volt:
-                v      = int(volt) / 1e6
-                full   = (int(cf)  / 1e6) * v * 1000
+                v = int(volt) / 1e6
+                full = (int(cf)  / 1e6) * v * 1000
                 design = (int(cfd) / 1e6) * v * 1000
                 cap_unit = "mWh"
         except ValueError:
@@ -158,7 +158,7 @@ def _parse_battery() -> dict | None:
 
     if full is None:
         try:
-            cf  = r("charge_full")
+            cf = r("charge_full")
             cfd = r("charge_full_design")
             if cf and cfd:
                 full, design, cap_unit = int(cf) / 1000, int(cfd) / 1000, "mAh"
@@ -169,11 +169,11 @@ def _parse_battery() -> dict | None:
     if full is not None and design and design > 0:
         health_str = f"{min(full / design * 100, 100.0):.1f}%"
 
-    status    = r("status") or "Unknown"
-    rate_w    = None
+    status = r("status") or "Unknown"
+    rate_w = None
     power_now = r("power_now")
-    curr_now  = r("current_now")
-    volt_now  = r("voltage_now")
+    curr_now = r("current_now")
+    volt_now = r("voltage_now")
 
     try:
         if power_now:
@@ -185,7 +185,7 @@ def _parse_battery() -> dict | None:
 
     if rate_w is not None:
         suffix = (
-            " (charging)"    if status.lower() == "charging"    else
+            " (charging)" if status.lower() == "charging" else
             " (discharging)" if status.lower() == "discharging" else ""
         )
         rate_str = f"{rate_w:.1f} W{suffix}"
@@ -193,34 +193,34 @@ def _parse_battery() -> dict | None:
         rate_str = "N/A"
 
     return {
-        "health":      health_str,
-        "cycles":      r("cycle_count") or "N/A",
-        "full_charge": f"{full:.0f} {cap_unit}"   if full   is not None else "N/A",
-        "design_cap":  f"{design:.0f} {cap_unit}" if design is not None else "N/A",
+        "health": health_str,
+        "cycles": r("cycle_count") or "N/A",
+        "full_charge": f"{full:.0f} {cap_unit}"  if full is not None else "N/A",
+        "design_cap": f"{design:.0f} {cap_unit}" if design is not None else "N/A",
         "charge_rate": rate_str,
     }
 
 
 def _parse_device_info() -> dict[str, str]:
-    sys_raw   = _dmi_raw("system")
+    sys_raw = _dmi_raw("system")
     board_raw = _dmi_raw("baseboard")
     return {
-        "name":     _extract(sys_raw,   "Product Name"),
-        "producer": _extract(sys_raw,   "Manufacturer"),
-        "model":    _extract(board_raw, "Product Name"),
+        "name": _extract(sys_raw, "Product Name"),
+        "producer": _extract(sys_raw, "Manufacturer"),
+        "model": _extract(board_raw, "Product Name"),
     }
 
 
 def _parse_processor_dmidecode() -> dict[str, str]:
-    raw   = _dmi_raw("processor")
+    raw = _dmi_raw("processor")
     speed = _extract(raw, "Current Speed")
     if speed == "N/A":
         speed = _extract(raw, "Max Speed")
     return {
         "manufacturer": _extract(raw, "Manufacturer"),
-        "cores":        _extract(raw, "Core Count"),
-        "threads":      _extract(raw, "Thread Count"),
-        "base_clock":   speed,
+        "cores": _extract(raw, "Core Count"),
+        "threads": _extract(raw, "Thread Count"),
+        "base_clock": speed,
     }
 
 
@@ -230,7 +230,7 @@ def _format_cache(size_str: str) -> str:
         return size_str
     try:
         value = float(parts[0])
-        unit  = parts[1].lower().rstrip("b").rstrip("i")
+        unit = parts[1].lower().rstrip("b").rstrip("i")
         if unit == "k":
             mb = value / 1024
             return f"{mb:.2f} MB" if mb < 1 else f"{mb:.0f} MB"
@@ -259,12 +259,12 @@ def _parse_cache_sizes() -> tuple[str, str, str]:
 
 
 def _parse_memory() -> dict[str, str]:
-    raw          = _dmi_raw("memory")
-    total_mb     = 0
-    mem_type     = "Unknown"
-    speed        = "Unknown"
+    raw = _dmi_raw("memory")
+    total_mb = 0
+    mem_type = "Unknown"
+    speed = "Unknown"
     manufacturer = "Unknown"
-    part_number  = "Unknown"
+    part_number = "Unknown"
     module_width = 64
     module_count = 0
     current: dict[str, str] = {}
@@ -277,12 +277,12 @@ def _parse_memory() -> dict[str, str]:
             return
         parts = raw_size.split()
         try:
-            sz   = int(parts[0])
+            sz = int(parts[0])
             unit = parts[1].upper() if len(parts) > 1 else "MB"
             if unit == "GB": sz *= 1024
         except (ValueError, IndexError):
             return
-        total_mb     += sz
+        total_mb += sz
         module_count += 1
         if d.get("Type", "Unknown") not in ("Unknown", ""):
             mem_type = d["Type"]
@@ -310,16 +310,16 @@ def _parse_memory() -> dict[str, str]:
         _flush(current)
 
     total_str = f"{total_mb // 1024} GB" if total_mb >= 1024 else f"{total_mb} MB"
-    spd_fmt   = speed if speed != "Unknown" else ""
-    summary   = f"{total_str} {mem_type}" + (f" @ {spd_fmt}" if spd_fmt else "")
+    spd_fmt = speed if speed != "Unknown" else ""
+    summary = f"{total_str} {mem_type}" + (f" @ {spd_fmt}" if spd_fmt else "")
     total_bus = module_width * module_count
 
     return {
-        "summary":      summary,
+        "summary": summary,
         "manufacturer": manufacturer,
-        "part_number":  part_number,
-        "width":        f"{total_bus} bit",
-        "modules":      f"{module_count} × {module_width} bit",
+        "part_number": part_number,
+        "width": f"{total_bus} bit",
+        "modules": f"{module_count} * {module_width} bit",
     }
 
 
@@ -332,38 +332,38 @@ def _resolve_codename(cpu: str, cpu_family: int, cpu_model: int) -> tuple[str, s
     if cpu_family == 23:
         arch = "Zen 1 - Zen 2"
         match cpu_model:
-            case 1:         family = "SummitRidge"
-            case 8:         family = "PinnacleRidge"
-            case 17 | 18:   family = "RavenRidge"
-            case 24:        family = "Picasso"
-            case 32:        family = "Pollock" if any(s in cpu for s in ("15e", "15Ce", "20e")) else "Dali"
-            case 80:        family = "FireFlight"
-            case 96:        family = "Renoir"
-            case 104:       family = "Lucienne"
-            case 113:       family = "Matisse"
+            case 1: family = "SummitRidge"
+            case 8: family = "PinnacleRidge"
+            case 17 | 18: family = "RavenRidge"
+            case 24: family = "Picasso"
+            case 32: family = "Pollock" if any(s in cpu for s in ("15e", "15Ce", "20e")) else "Dali"
+            case 80: family = "FireFlight"
+            case 96: family = "Renoir"
+            case 104: family = "Lucienne"
+            case 113: family = "Matisse"
             case 144 | 145: family = "VanGogh"
-            case 160:       family = "Mendocino"
+            case 160: family = "Mendocino"
 
     elif cpu_family == 25:
         arch = "Zen 3 - Zen 4"
         match cpu_model:
-            case 33:      family = "Vermeer"
+            case 33: family = "Vermeer"
             case 63 | 68: family = "Rembrandt"
-            case 80:      family = "Cezanne_Barcelo"
-            case 97:      family = "DragonRange" if "HX" in cpu else "Raphael"
-            case 116:     family = "PhoenixPoint"
-            case 120:     family = "PhoenixPoint2"
-            case 117:     family = "HawkPoint"
-            case 124:     family = "HawkPoint2"
+            case 80: family = "Cezanne_Barcelo"
+            case 97: family = "DragonRange" if "HX" in cpu else "Raphael"
+            case 116: family = "PhoenixPoint"
+            case 120: family = "PhoenixPoint2"
+            case 117: family = "HawkPoint"
+            case 124: family = "HawkPoint2"
 
     elif cpu_family == 26:
         arch = "Zen 5 - Zen 6"
         match cpu_model:
-            case 68:      family = "FireRange" if "HX" in cpu else "GraniteRidge"
-            case 96:      family = "KrackanPoint"
-            case 104:     family = "KrackanPoint2"
+            case 68: family = "FireRange" if "HX" in cpu else "GraniteRidge"
+            case 96: family = "KrackanPoint"
+            case 104: family = "KrackanPoint2"
             case 32 | 36: family = "StrixPoint"
-            case 112:     family = "StrixHalo"
+            case 112: family = "StrixHalo"
 
     return arch, family
 
@@ -376,8 +376,8 @@ _DESKTOP_FAMILIES = {
 
 def _cpu_type(family: str, arch: str) -> str:
     if family in _DESKTOP_FAMILIES: return "Amd_Desktop_Cpu"
-    if arch == "Intel":             return "Intel"
-    if arch == "Unknown":           return "Unknown"
+    if arch == "Intel": return "Intel"
+    if arch == "Unknown": return "Unknown"
     return "Amd_Apu"
 
 
@@ -399,9 +399,9 @@ def _has_discrete_rx7700s() -> bool:
 
 
 def _detect_framework_variant() -> str:
-    sys_raw  = _dmi_raw("system")
-    product  = _extract(sys_raw, "Product Name").lower()
-    mfr      = _extract(sys_raw, "Manufacturer").lower()
+    sys_raw = _dmi_raw("system")
+    product = _extract(sys_raw, "Product Name").lower()
+    mfr = _extract(sys_raw, "Manufacturer").lower()
 
     if "framework" not in mfr:
         return ""
@@ -430,30 +430,27 @@ def detect() -> None:
 
 
 def _compute_codename() -> None:
-    raw_cpu   = cfg.get("Info", "CPU")
+    raw_cpu = cfg.get("Info", "CPU")
     signature = cfg.get("Info", "Signature")
     try:
-        words      = signature.split()
+        words = signature.split()
         cpu_family = int(words[words.index("Family") + 1].rstrip(","))
-        cpu_model  = int(words[words.index("Model")  + 1].rstrip(","))
+        cpu_model = int(words[words.index("Model") + 1].rstrip(","))
     except (ValueError, IndexError):
         cfg.set_config("Info", "Architecture", "Unknown")
-        cfg.set_config("Info", "Family",       "Unknown")
-        cfg.set_config("Info", "Type",         "Unknown")
+        cfg.set_config("Info", "Family", "Unknown")
+        cfg.set_config("Info", "Type", "Unknown")
         return
     arch, family = _resolve_codename(raw_cpu, cpu_family, cpu_model)
     cfg.set_config("Info", "Architecture", arch)
-    cfg.set_config("Info", "Family",       family)
-    cfg.set_config("Info", "Type",         _cpu_type(family, arch))
+    cfg.set_config("Info", "Family", family)
+    cfg.set_config("Info", "Type", _cpu_type(family, arch))
 
 
 def show_info() -> None:
     clear()
 
-    _B = "\033[1m"
-    _D = "\033[2m"
-    _R = "\033[0m"
-    W  = 14
+    W = 14
 
     print(f"  {_B}Hardware Information{_R}\n")
 
@@ -466,41 +463,41 @@ def show_info() -> None:
 
     dev = _parse_device_info()
     section("Device")
-    row("Name",     dev["name"])
+    row("Name", dev["name"])
     row("Producer", dev["producer"])
-    row("Model",    dev["model"])
+    row("Model", dev["model"])
 
-    proc       = _parse_processor_dmidecode()
+    proc = _parse_processor_dmidecode()
     l1, l2, l3 = _parse_cache_sizes()
 
     print()
     section("Processor")
-    row("CPU",        cfg.get("Info", "CPU"))
-    row("Producer",   proc["manufacturer"])
-    row("Codename",   cfg.get("Info", "Family"))
-    row("Signature",  cfg.get("Info", "Signature"))
-    row("Cores",      proc["cores"])
-    row("Threads",    proc["threads"])
+    row("CPU", cfg.get("Info", "CPU"))
+    row("Producer", proc["manufacturer"])
+    row("Codename", cfg.get("Info", "Family"))
+    row("Signature", cfg.get("Info", "Signature"))
+    row("Cores", proc["cores"])
+    row("Threads", proc["threads"])
     row("Base clock", proc["base_clock"])
-    row("L1 cache",   l1)
-    row("L2 cache",   l2)
-    row("L3 cache",   l3)
+    row("L1 cache", l1)
+    row("L2 cache", l2)
+    row("L3 cache", l3)
 
     mem = _parse_memory()
     print()
     section("Memory")
-    row("Memory",    mem["summary"])
-    row("Producer",  mem["manufacturer"])
-    row("Model",     mem["part_number"])
+    row("Memory", mem["summary"])
+    row("Producer", mem["manufacturer"])
+    row("Model", mem["part_number"])
     row("Bus width", mem["width"])
-    row("Modules",   mem["modules"])
+    row("Modules", mem["modules"])
 
     bat = _parse_battery()
     if bat:
         print()
         section("Battery")
-        row("Health",      bat["health"])
-        row("Cycles",      bat["cycles"])
+        row("Health", bat["health"])
+        row("Cycles", bat["cycles"])
         row("Full charge", bat["full_charge"])
         row("Design cap.", bat["design_cap"])
         row("Charge rate", bat["charge_rate"])

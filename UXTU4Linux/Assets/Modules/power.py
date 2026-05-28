@@ -1,12 +1,13 @@
 """
 power.py
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 from . import config as cfg
-from .ui import menu, clear, ask, pause, MenuItem
+from .ui import menu, clear, ask, pause, MenuItem, _B, _R
 
 
 def _strip_cpu_name(raw: str) -> str:
@@ -59,7 +60,7 @@ def apply_smu(args: str, user_mode: str, *, save_to_config: bool = True) -> None
     if not client.ping():
         clear()
         print("  Daemon is not running.")
-        print("  sudo systemctl enable --now uxtu4linux.service")
+        print(f"  {_B}sudo systemctl enable --now uxtu4linux.service{_R}")
         pause()
         return
 
@@ -178,10 +179,12 @@ def set_current_preset(name: str, args: str) -> None:
 
 
 _PRESET_HINTS: dict[str, str] = {
-    "Eco":         "Prioritizes battery life — conservative power limits, minimal heat",
-    "Balance":     "Balanced performance and efficiency for everyday use",
+    "Eco": "Prioritizes battery life — conservative power limits, minimal heat",
+    "Balance": "Balanced performance and efficiency for everyday use",
     "Performance": "Higher power limits for sustained workloads and faster response",
-    "Extreme":     "Maximum power limits — highest performance, more heat and power draw",
+    "Extreme": "Maximum power limits — highest performance, more heat and power draw",
+    "AC": "Hidden options to improve performance (is set when AC plugged in)",
+    "DC": "Hidden options to improve power efficiency (is set when AC unplugged)",
 }
 
 
@@ -221,7 +224,7 @@ def _daemon_status_screen(client) -> None:
     clear()
     if not client.ping():
         print("  Daemon is not running.")
-        print("  sudo systemctl enable --now uxtu4linux.service")
+        print(f"  {_B}sudo systemctl enable --now uxtu4linux.service{_R}")
     else:
         s = client.status()
         auto = s.get("automation", False)
@@ -304,12 +307,12 @@ def preset_menu() -> None:
         return s
 
     handlers = {
-        "select_preset":    _do_select_preset,
-        "custom_args":      lambda s: _custom_args_menu(s, client),
+        "select_preset": _do_select_preset,
+        "custom_args": lambda s: _custom_args_menu(s, client),
         "reapply_interval": lambda s: _reapply_interval_menu(s, client),
-        "stop_reapply":     lambda s: _stop_loop_screen(s, client),
-        "start_reapply":    lambda s: _start_loop_screen(s, client),
-        "daemon_status":    _do_daemon_status,
+        "stop_reapply": lambda s: _stop_loop_screen(s, client),
+        "start_reapply": lambda s: _start_loop_screen(s, client),
+        "daemon_status": _do_daemon_status,
     }
 
     while True:

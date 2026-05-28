@@ -11,7 +11,7 @@ import tempfile
 import time
 
 from . import config as cfg
-from .ui import clear, menu, pause, MenuItem
+from .ui import clear, menu, pause, MenuItem, _B, _R
 
 SERVICE_NAME = "uxtu4linux.service"
 SERVICE_FILE = f"/etc/systemd/system/{SERVICE_NAME}"
@@ -27,7 +27,7 @@ def _has_systemctl() -> bool:
 
 
 def _ensure_venv() -> bool:
-    venv_dir    = cfg.VENV_DIR
+    venv_dir = cfg.VENV_DIR
     venv_python = cfg.VENV_PYTHON
 
     def _sudo(*args: str) -> int:
@@ -35,18 +35,18 @@ def _ensure_venv() -> bool:
 
     if not os.path.isfile(venv_python):
         print(f"  Creating venv at {venv_dir} ...")
-        print(f"    (to recreate manually: sudo {sys.executable} -m venv --without-pip {venv_dir})")
+        print(f"    (to recreate manually: {_B}sudo {sys.executable} -m venv --without-pip {venv_dir}{_R})")
         _sudo("mkdir", "-p", venv_dir)
         if _sudo(sys.executable, "-m", "venv", "--without-pip", venv_dir) != 0:
             print(f"\n  Failed to create venv at {venv_dir}.")
             print(f"  Try running manually:")
-            print(f"    sudo {sys.executable} -m venv --without-pip {venv_dir}")
+            print(f"    {_B}sudo {sys.executable} -m venv --without-pip {venv_dir}{_R}")
             pause()
             return False
         if _sudo(venv_python, "-m", "ensurepip", "--upgrade") != 0:
             print(f"\n  Failed to bootstrap pip inside {venv_dir}.")
             print(f"  Try running manually:")
-            print(f"    sudo {venv_python} -m ensurepip --upgrade")
+            print(f"    {_B}sudo {venv_python} -m ensurepip --upgrade{_R}")
             pause()
             return False
 
@@ -56,13 +56,13 @@ def _ensure_venv() -> bool:
     )
     if probe.returncode != 0:
         print(f"  Installing pyzmq into {venv_dir} ...")
-        print(f"    (to install manually: sudo {venv_python} -m pip install pyzmq)")
+        print(f"    (to install manually: {_B}sudo {venv_python} -m pip install pyzmq{_R})")
         def _sudo(*args: str) -> int:
             return subprocess.run(["sudo", "-p", _SUDO_PROMPT, *args]).returncode
         if _sudo(venv_python, "-m", "pip", "install", "pyzmq", "--quiet") != 0:
             print(f"\n  Failed to install pyzmq.")
             print(f"  Try running manually:")
-            print(f"    sudo {venv_python} -m pip install pyzmq")
+            print(f"    {_B}sudo {venv_python} -m pip install pyzmq{_R}")
             pause()
             return False
 
@@ -101,7 +101,7 @@ def _sudo_run(*args: str) -> int:
 def _systemctl(*args: str) -> int:
     if not _has_systemctl():
         print("  systemctl is not available on this system.")
-        print(f"  Start the daemon manually: sudo {_python()} {_daemon_script()}")
+        print(f"  Start the daemon manually: {_B}sudo {_python()} {_daemon_script()}{_R}")
         return 1
     return _sudo_run("systemctl", *args)
 
@@ -146,7 +146,7 @@ def wait_for_daemon_or_warn(context: str = "") -> bool:
 def install_service() -> None:
     if not _has_systemctl():
         print("  systemctl is not available — cannot install as a systemd service.")
-        print(f"  Run the daemon manually: sudo {_python()} {_daemon_script()}")
+        print(f"  Run the daemon manually: {_B}sudo {_python()} {_daemon_script()}{_R}")
         pause()
         return
     if not _ensure_venv():
@@ -157,11 +157,11 @@ def install_service() -> None:
         return
     _systemctl("daemon-reload")
     _systemctl("enable", SERVICE_NAME)
-    _systemctl("start",  SERVICE_NAME)
+    _systemctl("start", SERVICE_NAME)
 
 
 def uninstall_service() -> None:
-    _systemctl("stop",    SERVICE_NAME)
+    _systemctl("stop", SERVICE_NAME)
     _systemctl("disable", SERVICE_NAME)
     _sudo_run("rm", "-f", SERVICE_FILE)
     _systemctl("daemon-reload")
@@ -202,7 +202,7 @@ def verify_service_path() -> None:
     except OSError:
         return
 
-    current_exec  = f"ExecStart={_python()} {_daemon_script()}"
+    current_exec = f"ExecStart={_python()} {_daemon_script()}"
     existing_exec = next(
         (line for line in content.splitlines() if line.startswith("ExecStart=")),
         None,
@@ -220,7 +220,7 @@ def verify_service_path() -> None:
         _systemctl("restart", SERVICE_NAME)
         print("  Service file regenerated and daemon restarted.")
     else:
-        print(f"  Update manually: sudo nano {SERVICE_FILE}")
+        print(f"  Update manually: {_B}sudo nano {SERVICE_FILE}{_R}")
     pause()
 
 
@@ -229,23 +229,23 @@ def daemon_menu() -> None:
         clear()
         print("  systemd is not available on this system.\n")
         print("  Start the daemon in a separate terminal:\n")
-        print(f"    sudo {_python()} {_daemon_script()}\n")
+        print(f"    {_B}sudo {_python()} {_daemon_script()}{_R}\n")
         pause()
         return
 
     while True:
-        running  = service_running()
-        enabled  = service_enabled()
+        running = service_running()
+        enabled = service_enabled()
         subtitle = (
             f"Status: {'Running' if running else 'Stopped'}\n"
             f"{'Enabled on boot' if enabled else 'Not enabled'}"
         )
         items: list[MenuItem] = [
             MenuItem("Install & enable", key="install"),
-            MenuItem("Uninstall",        key="uninstall"),
-            MenuItem("Restart",          key="restart"),
-            MenuItem("View logs",        hint="last 50 lines", key="view_logs"),
-            MenuItem("Back",             key="back"),
+            MenuItem("Uninstall", key="uninstall"),
+            MenuItem("Restart", key="restart"),
+            MenuItem("View logs", hint="last 50 lines", key="view_logs"),
+            MenuItem("Back", key="back"),
         ]
         choice = menu("Daemon Service", items, subtitle=subtitle)
         if choice == -1 or items[choice].key == "back":

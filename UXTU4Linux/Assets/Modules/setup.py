@@ -9,7 +9,7 @@ import subprocess
 
 from . import config as cfg
 from .hardware import detect as detect_hardware
-from .ui import clear, confirm, pause
+from .ui import clear, confirm, pause, _B, _R
 
 
 def ensure_binaries_executable() -> None:
@@ -25,14 +25,14 @@ def _apply_defaults() -> None:
     cfg.ensure_sections("User", "Settings", "Info", "Automations")
     if not cfg.get("User", "Mode"):
         cfg.set_config("User", "Mode", "Balance")
-    cfg.set_config("Settings",   "Time",           "3")
-    cfg.set_config("Settings",   "SoftwareUpdate", "1")
-    cfg.set_config("Settings",   "ReApply",        "0")
-    cfg.set_config("Settings",   "ApplyOnStart",   "1")
-    cfg.set_config("Settings",   "Debug",          "0")
-    cfg.set_config("Automations", "Enabled",       "0")
-    cfg.set_config("Automations", "OnAC",          "")
-    cfg.set_config("Automations", "OnBattery",     "")
+    cfg.set_config("Settings", "Time", "3")
+    cfg.set_config("Settings", "SoftwareUpdate", "1")
+    cfg.set_config("Settings", "ReApply", "0")
+    cfg.set_config("Settings", "ApplyOnStart", "1")
+    cfg.set_config("Settings", "Debug", "0")
+    cfg.set_config("Automations", "Enabled", "0")
+    cfg.set_config("Automations", "OnAC", "")
+    cfg.set_config("Automations", "OnBattery", "")
 
 
 def _ensure_custom_presets_file() -> None:
@@ -91,7 +91,7 @@ def run_welcome() -> None:
         _ensure_venv()
         print("  systemd is not available on this system.")
         print("  Start the daemon in a separate terminal:\n")
-        print(f"    sudo {_python()} {_daemon_script()}\n")
+        print(f"    sudo {_B}{_python()} {_daemon_script()}{_R}\n")
         print("  Waiting for the daemon to become available...")
         print("  (start it now, then come back here)\n")
         if not wait_for_daemon(timeout=120.0, interval=1.0):
@@ -106,22 +106,22 @@ def run_welcome() -> None:
     print("  Detecting hardware...\n")
     detect_hardware()
 
-    cpu      = cfg.get("Info", "CPU")
-    family   = cfg.get("Info", "Family")
-    arch     = cfg.get("Info", "Architecture")
+    cpu = cfg.get("Info", "CPU")
+    family = cfg.get("Info", "Family")
+    arch = cfg.get("Info", "Architecture")
     cpu_type = cfg.get("Info", "Type")
-    sig      = cfg.get("Info", "Signature")
+    sig = cfg.get("Info", "Signature")
 
     W = 14
 
     def row(label: str, value: str) -> None:
         print(f"  \033[2m{label:<{W}}\033[0m  {value}")
 
-    row("CPU",       cpu      or "Not detected")
-    row("Family",    family   or "Unknown")
-    row("Arch",      arch     or "Unknown")
-    row("Type",      cpu_type or "Unknown")
-    row("Signature", sig      or "Unknown")
+    row("CPU", cpu or "Not detected")
+    row("Family", family or "Unknown")
+    row("Arch", arch or "Unknown")
+    row("Type", cpu_type or "Unknown")
+    row("Signature", sig or "Unknown")
     print()
     pause()
 

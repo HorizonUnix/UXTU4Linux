@@ -40,7 +40,7 @@ _RYZENADJ_TOKEN_RE = re.compile(
 MIN_INTERVAL_SECONDS = cfg.MIN_INTERVAL_SECONDS
 MAX_INTERVAL_SECONDS = cfg.MAX_INTERVAL_SECONDS
 
-_STOP_LOOP_TIMEOUT_S:  int = 10
+_STOP_LOOP_TIMEOUT_S: int = 10
 _POWER_MONITOR_POLL_S: int = 2
 
 _DAEMON_LOCK_FILE = "/run/uxtu4linux_daemon.lock"
@@ -85,8 +85,8 @@ def _run_cmd(command: str) -> str:
 
 
 def _on_ac() -> bool:
-    ac_online           = False
-    found_ac            = False
+    ac_online = False
+    found_ac = False
     battery_discharging = False
     try:
         for entry in os.listdir("/sys/class/power_supply"):
@@ -169,16 +169,16 @@ def _run_ryzenadj(args: str, mode: str) -> str:
 
 @dataclass
 class PresetState:
-    mode:       str
-    args:       str
+    mode: str
+    args: str
     automation: bool
-    interval:   int
-    reapply:    bool
+    interval: int
+    reapply: bool
 
 
 def _load_saved_preset() -> PresetState | None:
     cfg.load()
-    user_mode  = cfg.get("User", "Mode")
+    user_mode = cfg.get("User", "Mode")
     automation = cfg.get("Automations", "Enabled", "0") == "1"
 
     if user_mode == "Custom":
@@ -198,46 +198,46 @@ def _load_saved_preset() -> PresetState | None:
                 log.error("Preset '%s' not found — cannot apply.", user_mode)
                 return None
 
-    reapply     = cfg.get("Settings", "ReApply", "0") == "1"
+    reapply = cfg.get("Settings", "ReApply", "0") == "1"
     cfg_default = int(cfg.get("Settings", "Time", "3"))
-    interval    = cfg.parse_interval(cfg.get("Settings", "Time", str(cfg_default)), cfg_default)
+    interval = cfg.parse_interval(cfg.get("Settings", "Time", str(cfg_default)), cfg_default)
 
     return PresetState(
-        mode       = user_mode,
-        args       = args,
+        mode = user_mode,
+        args = args,
         automation = automation,
-        interval   = interval,
-        reapply    = reapply,
+        interval = interval,
+        reapply = reapply,
     )
 
 
 class PowerDaemon:
     def __init__(self) -> None:
-        self._lock             = threading.Lock()
-        self._loop_thread: threading.Thread | None    = None
+        self._lock = threading.Lock()
+        self._loop_thread: threading.Thread | None = None
         self._monitor_thread: threading.Thread | None = None
-        self._stop_evt         = threading.Event()
+        self._stop_evt = threading.Event()
         self._stop_monitor_evt = threading.Event()
-        self._mode             = ""
-        self._args             = ""
-        self._automation       = False
-        self._interval         = 3
-        self._last_output      = ""
-        self._running_loop     = False
+        self._mode = ""
+        self._args = ""
+        self._automation = False
+        self._interval = 3
+        self._last_output = ""
+        self._running_loop = False
         self._last_logged_mode = ""
         self._last_ac_state: bool | None = None
 
         self._dispatch = {
-            "ping":                self._cmd_ping,
-            "apply":               self._cmd_apply,
-            "apply_loop":          self._cmd_apply_loop,
-            "stop_loop":           self._cmd_stop_loop,
-            "status":              self._cmd_status,
-            "apply_saved":         self._cmd_apply_saved,
-            "shutdown":            self._cmd_shutdown,
-            "dmidecode":           self._cmd_dmidecode,
-            "reload_config":       self._cmd_reload_config,
-            "apply_custom_args":   self._cmd_apply_custom_args,
+            "ping": self._cmd_ping,
+            "apply": self._cmd_apply,
+            "apply_loop": self._cmd_apply_loop,
+            "stop_loop": self._cmd_stop_loop,
+            "status": self._cmd_status,
+            "apply_saved": self._cmd_apply_saved,
+            "shutdown": self._cmd_shutdown,
+            "dmidecode": self._cmd_dmidecode,
+            "reload_config": self._cmd_reload_config,
+            "apply_custom_args": self._cmd_apply_custom_args,
             "list_custom_presets": self._cmd_list_custom_presets,
         }
 
@@ -255,9 +255,9 @@ class PowerDaemon:
             return base_mode, base_args
 
         cfg.load()
-        current_ac  = _on_ac() if on_ac is None else on_ac
+        current_ac = _on_ac() if on_ac is None else on_ac
         power_state = "AC" if current_ac else "Battery"
-        config_key  = "OnAC" if current_ac else "OnBattery"
+        config_key = "OnAC" if current_ac else "OnBattery"
         preset_name = cfg.get("Automations", config_key, "")
 
         if not preset_name:
@@ -267,7 +267,7 @@ class PowerDaemon:
             )
             if base_args:
                 return base_mode, base_args
-            other_key  = "OnBattery" if current_ac else "OnAC"
+            other_key = "OnBattery" if current_ac else "OnAC"
             other_name = cfg.get("Automations", other_key, "")
             if other_name:
                 result = _resolve_preset_args(other_name)
@@ -300,8 +300,8 @@ class PowerDaemon:
             return ""
         output = _run_ryzenadj(args, mode)
         with self._lock:
-            self._mode        = mode
-            self._args        = args
+            self._mode = mode
+            self._args = args
             self._last_output = output
         if log_apply:
             log.info("Preset applied: %s", mode)
@@ -317,9 +317,9 @@ class PowerDaemon:
         )
         while not self._stop_evt.wait(interval):
             try:
-                on_ac              = _on_ac()
+                on_ac = _on_ac()
                 eff_mode, eff_args = self._effective_mode_args(mode, args, automation, on_ac)
-                changed            = eff_mode != self._last_logged_mode
+                changed = eff_mode != self._last_logged_mode
                 if changed:
                     log.debug(
                         "Reapply tick — preset changed: '%s' → '%s' (power=%s).",
@@ -362,8 +362,8 @@ class PowerDaemon:
             try:
                 current_ac = _on_ac()
                 if current_ac != self._last_ac_state:
-                    prev_state         = "AC" if self._last_ac_state else "Battery"
-                    new_state          = "AC" if current_ac else "Battery"
+                    prev_state = "AC" if self._last_ac_state else "Battery"
+                    new_state = "AC" if current_ac else "Battery"
                     self._last_ac_state = current_ac
                     cfg.load()
                     eff_mode, eff_args = self._effective_mode_args(
@@ -401,9 +401,9 @@ class PowerDaemon:
 
     def start_auto_reapply(self, state: PresetState) -> dict:
         return self._cmd_apply_loop({
-            "args":       state.args,
-            "mode":       state.mode,
-            "interval":   state.interval,
+            "args": state.args,
+            "mode": state.mode,
+            "interval": state.interval,
             "automation": state.automation,
         })
 
@@ -412,8 +412,8 @@ class PowerDaemon:
 
     def _cmd_apply(self, msg: dict) -> dict:
         try:
-            mode   = msg.get("mode", "Unknown")
-            args   = msg.get("args", "")
+            mode = msg.get("mode", "Unknown")
+            args = msg.get("args", "")
             output = self._apply_once(args, mode, log_apply=True)
             self._last_logged_mode = mode
             return {"ok": True, "output": output}
@@ -422,11 +422,11 @@ class PowerDaemon:
             return {"ok": False, "error": str(exc)}
 
     def _cmd_apply_loop(self, msg: dict) -> dict:
-        args        = msg.get("args", "")
-        mode        = msg.get("mode", "Unknown")
+        args = msg.get("args", "")
+        mode = msg.get("mode", "Unknown")
         cfg_default = int(cfg.get("Settings", "Time", "3"))
-        interval    = cfg.parse_interval(msg.get("interval", cfg_default), cfg_default)
-        automation  = bool(msg.get("automation", False))
+        interval = cfg.parse_interval(msg.get("interval", cfg_default), cfg_default)
+        automation = bool(msg.get("automation", False))
 
         log.debug(
             "apply_loop: mode='%s', interval=%ds, automation=%s.",
@@ -437,11 +437,11 @@ class PowerDaemon:
         self._stop_monitor()
 
         with self._lock:
-            self._automation   = automation
-            self._interval     = interval
+            self._automation = automation
+            self._interval = interval
             self._running_loop = True
 
-        on_ac              = _on_ac()
+        on_ac = _on_ac()
         eff_mode, eff_args = self._effective_mode_args(mode, args, automation, on_ac)
         try:
             self._apply_once(eff_args, eff_mode, log_apply=True)
@@ -487,14 +487,14 @@ class PowerDaemon:
     def _cmd_status(self, _msg: dict) -> dict:
         with self._lock:
             return {
-                "ok":           True,
+                "ok": True,
                 "running_loop": self._running_loop,
-                "mode":         self._mode,
-                "args":         self._args,
-                "automation":   self._automation,
-                "interval":     self._interval,
-                "on_ac":        _on_ac(),
-                "last_output":  self._last_output,
+                "mode": self._mode,
+                "args": self._args,
+                "automation": self._automation,
+                "interval": self._interval,
+                "on_ac": _on_ac(),
+                "last_output": self._last_output,
             }
 
     def _cmd_apply_saved(self, _msg: dict) -> dict:
@@ -520,7 +520,7 @@ class PowerDaemon:
             return self.start_auto_reapply(state)
 
         if state.automation:
-            on_ac              = _on_ac()
+            on_ac = _on_ac()
             eff_mode, eff_args = self._effective_mode_args(
                 state.mode, state.args, automation=True, on_ac=on_ac
             )
@@ -578,8 +578,8 @@ class PowerDaemon:
 
     def handle(self, raw: str) -> str:
         try:
-            msg  = json.loads(raw)
-            cmd  = msg.get("cmd", "")
+            msg = json.loads(raw)
+            cmd = msg.get("cmd", "")
             func = self._dispatch.get(cmd)
             if func is None:
                 log.warning("Unknown IPC command: '%s'.", cmd)
@@ -599,7 +599,7 @@ class PowerDaemon:
             except OSError as exc:
                 log.error("Cannot remove stale socket %s: %s", cfg.ZMQ_SOCKET_PATH, exc)
 
-        ctx  = zmq.Context()
+        ctx = zmq.Context()
         sock = ctx.socket(zmq.REP)
         try:
             sock.bind(cfg.ZMQ_SOCKET_ADDR)
@@ -625,7 +625,7 @@ class PowerDaemon:
             sys.exit(0)
 
         signal.signal(signal.SIGTERM, _sig_handler)
-        signal.signal(signal.SIGINT,  _sig_handler)
+        signal.signal(signal.SIGINT, _sig_handler)
 
         if on_ready is not None:
             try:
@@ -636,7 +636,7 @@ class PowerDaemon:
         log.info("Daemon ready — waiting for commands.")
 
         while True:
-            raw  = sock.recv_string()
+            raw = sock.recv_string()
             resp = self.handle(raw)
             sock.send_string(resp)
             if json.loads(raw).get("cmd") == "shutdown":
@@ -667,7 +667,7 @@ def _apply_on_start(daemon: PowerDaemon) -> None:
         )
         daemon.start_auto_reapply(state)
     elif state.automation:
-        on_ac              = _on_ac()
+        on_ac = _on_ac()
         eff_mode, eff_args = daemon._effective_mode_args(
             state.mode, state.args, automation=True, on_ac=on_ac
         )
@@ -682,7 +682,7 @@ def _apply_on_start(daemon: PowerDaemon) -> None:
 
 def main() -> None:
     logging.basicConfig(
-        level  = logging.INFO,
+        level = logging.INFO,
         format = "%(levelname)s: %(message)s",
     )
 
@@ -709,17 +709,17 @@ def main() -> None:
     cfg.DMIDECODE = dmi
     log.debug("dmidecode binary: %s", dmi)
 
-    cpu  = cfg.get("Info", "CPU")
-    fam  = cfg.get("Info", "Family")
+    cpu = cfg.get("Info", "CPU")
+    fam = cfg.get("Info", "Family")
     arch = cfg.get("Info", "Architecture")
     log.info("CPU: %s, Family: %s, Arch: %s", cpu, fam, arch)
 
     if not ryzen_smu_loaded() and secure_boot_enabled():
         log.error(
-            "ryzen_smu kernel module not loaded — Secure Boot is blocking it."
+            "ryzen_smu kernel module not loaded and Secure Boot is on."
         )
         log.error(
-            "Fix: disable Secure Boot in UEFI, or sign the module with your MOK key."
+            "Fix: disable Secure Boot in UEFI, or install and sign the module with your MOK key."
         )
         log.error(
             "See: https://github.com/HorizonUnix/UXTU4Linux/wiki/Linux-Troubleshooting"
@@ -727,7 +727,7 @@ def main() -> None:
         )
         sys.exit(1)
 
-    daemon   = PowerDaemon()
+    daemon = PowerDaemon()
     on_ready = (
         (lambda: _apply_on_start(daemon))
         if cfg.get("Settings", "ApplyOnStart", "1") == "1"

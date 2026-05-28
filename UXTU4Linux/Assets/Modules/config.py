@@ -1,27 +1,28 @@
 """
 config.py
 """
+
 import os
 from configparser import ConfigParser
 from pathlib import Path
 
 LOCAL_VERSION = "0.6.03"
-LOCAL_BUILD   = "6-linux-27May26-r3"
+LOCAL_BUILD = "6-linux-27May26-r3"
 
 GITHUB_API_URL = "https://api.github.com/repos/HorizonUnix/UXTU4Linux/releases/latest"
 LATEST_VER_URL = "https://github.com/HorizonUnix/UXTU4Linux/releases/latest"
 
-_ROOT      = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 ASSETS_DIR = os.path.join(_ROOT, "Assets")
 
-CONFIG_PATH         = os.path.join(ASSETS_DIR, "config.ini")
-CUSTOM_PRESETS_PATH = Path(ASSETS_DIR) / "custom_presets.json"
+CONFIG_PATH = os.path.join(ASSETS_DIR, "config.ini")
+CUSTOM_PRESETS_PATH = Path(ASSETS_DIR) / "custom.json"
 
 RYZENADJ = os.path.join(ASSETS_DIR, "Linux", "ryzenadj")
 DMIDECODE = "dmidecode"
-KERNEL    = os.uname().sysname
+KERNEL = os.uname().sysname
 
-VENV_DIR    = "/opt/uxtu4linux/venv"
+VENV_DIR = "/opt/uxtu4linux/venv"
 VENV_PYTHON = os.path.join(VENV_DIR, "bin", "python3")
 
 ZMQ_SOCKET_PATH = "/run/uxtu4linux.sock"
@@ -30,7 +31,7 @@ ZMQ_SOCKET_ADDR = f"ipc://{ZMQ_SOCKET_PATH}"
 MIN_INTERVAL_SECONDS: int = 1
 MAX_INTERVAL_SECONDS: int = 86400
 
-_cfg           = ConfigParser()
+_cfg = ConfigParser()
 _loaded_preset = ""
 
 
@@ -86,8 +87,8 @@ def instance() -> ConfigParser:
 
 
 REQUIRED: dict[str, list[str]] = {
-    "User":        ["mode"],
-    "Settings":    ["time", "reapply", "applyonstart", "softwareupdate", "debug"],
-    "Info":        ["cpu", "signature", "architecture", "family", "type", "variant"],
+    "User": ["mode"],
+    "Settings": ["time", "reapply", "applyonstart", "softwareupdate", "debug"],
+    "Info": ["cpu", "signature", "architecture", "family", "type", "variant"],
     "Automations": ["enabled", "onac", "onbattery"],
 }

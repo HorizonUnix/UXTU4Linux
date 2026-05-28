@@ -7,20 +7,20 @@ if _ROOT not in sys.path:
 
 import fcntl as _fcntl
 from Assets.Modules import config as cfg
-from Assets.Modules.hardware     import check_binaries, check_system_compat, show_info as hardware_info
-from Assets.Modules.power        import get_presets, preset_menu
-from Assets.Modules.settings     import settings_menu, ensure_config_files
-from Assets.Modules.automations  import automations_menu
+from Assets.Modules.hardware import check_binaries, check_system_compat, show_info as hardware_info
+from Assets.Modules.power import get_presets, preset_menu
+from Assets.Modules.settings import settings_menu, ensure_config_files
+from Assets.Modules.automations import automations_menu
 from Assets.Modules.custom import custom_preset_menu
-from Assets.Modules.setup        import check_integrity, ensure_binaries_executable
-from Assets.Modules.service      import verify_service_path, daemon_menu
-from Assets.Modules.updater      import check_updates
-from Assets.Modules.ui           import clear, pause, quit_app, menu, about_menu, MenuItem
+from Assets.Modules.setup import check_integrity, ensure_binaries_executable
+from Assets.Modules.service import verify_service_path, daemon_menu
+from Assets.Modules.updater import check_updates
+from Assets.Modules.ui import clear, pause, quit_app, menu, about_menu, MenuItem
 
 
 cfg.load()
 _TUI_LOCK_FILE = "/tmp/uxtu4linux_tui.lock"
-_tui_lock_fh   = None
+_tui_lock_fh = None
 
 
 def _acquire_single_instance() -> bool:

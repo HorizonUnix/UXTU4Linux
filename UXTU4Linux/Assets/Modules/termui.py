@@ -3,17 +3,33 @@ termui.py
 """
 
 from __future__ import annotations
-import os, select, sys, termios, tty
+import os, re, select, sys, termios, tty
 
 HIDE_CURSOR = "\033[?25l"
 SHOW_CURSOR = "\033[?25h"
 
-UP    = b"\x1b[A"
-DOWN  = b"\x1b[B"
+UP = b"\x1b[A"
+DOWN = b"\x1b[B"
 RIGHT = b"\x1b[C"
-LEFT  = b"\x1b[D"
+LEFT = b"\x1b[D"
 ENTER = b"\r"
-ESC   = b"\x1b"
+ESC = b"\x1b"
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*[mKHJA-Za-z]")
+
+
+def _visible_len(s: str) -> int:
+    return len(_ANSI_RE.sub("", s))
+
+
+def _physical_rows(lines: list[str], width: int) -> int:
+    if width <= 0:
+        return len(lines)
+    total = 0
+    for line in lines:
+        vlen = _visible_len(line)
+        total += max(1, (vlen + width - 1) // width)
+    return total
 
 
 def is_tty() -> bool:
@@ -45,4 +61,8 @@ def draw_lines(lines: list[str], prev: int) -> int:
         sys.stdout.write(f"\x1b[{prev}A\x1b[J")
     sys.stdout.write("\n".join(lines) + "\n")
     sys.stdout.flush()
-    return len(lines)
+    try:
+        width = os.get_terminal_size().columns
+    except OSError:
+        width = 80
+    return _physical_rows(lines, width)

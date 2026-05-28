@@ -6,12 +6,12 @@ from __future__ import annotations
 
 import copy
 import json
-import logging
 import sys
 from typing import Any
 
 from . import config as cfg
 from . import termui
+from .ui import _R, _B, _D, _C, _Y, _G
 
 FIELD_DEFS: list[dict[str, Any]] = [
     {
@@ -106,20 +106,13 @@ FIELD_DEFS: list[dict[str, Any]] = [
     },
 ]
 
-_SECTION_NAMES  = {1: "Temp", 2: "Power", 3: "VRM", 4: "iGPU"}
+_SECTION_NAMES = {1: "Temp", 2: "Power", 3: "VRM", 4: "iGPU"}
 _SECTION_TITLES = {
     1: "APU Temperature Tuning",
     2: "APU Power Tuning",
     3: "APU VRM Tuning",
     4: "iGPU Tuning",
 }
-
-_R = "\033[0m"
-_B = "\033[1m"
-_D = "\033[2m"
-_C = "\033[96m"
-_Y = "\033[33m"
-_G = "\033[32m"
 
 
 def _display_name(internal_name: str) -> str:
@@ -157,7 +150,7 @@ def _enforce_igpu_clamp(fields: list[dict], changed_key: str) -> None:
 
 def _ryzenadj_value(f: dict) -> int:
     unit = f["unit"]
-    val  = f["value"]
+    val = f["value"]
     if unit in ("W", "A"):
         return val * 1000
     return val
@@ -195,9 +188,9 @@ def record_to_fields(record: dict) -> list[dict]:
     fields = default_fields()
     for f in fields:
         if f["key"] in record:
-            entry        = record[f["key"]]
+            entry = record[f["key"]]
             f["enabled"] = bool(entry.get("enabled", f["enabled"]))
-            f["value"]   = clamp_field(int(entry.get("value", f["default"])), f)
+            f["value"] = clamp_field(int(entry.get("value", f["default"])), f)
     return fields
 
 
@@ -214,15 +207,14 @@ def save_preset(base_name: str, fields: list[dict]) -> str:
     presets = [p for p in presets if p["name"] != base_name]
     presets.append(fields_to_record(base_name, fields))
     _save_custom_presets(presets)
-    logging.info("Custom preset saved: %s", base_name)
 
     internal_name = base_name + "_custom_preset"
-    active_mode   = cfg.get("User", "Mode")
-    ac_slot       = cfg.get("Automations", "OnAC", "")
-    bat_slot      = cfg.get("Automations", "OnBattery", "")
+    active_mode = cfg.get("User", "Mode")
+    ac_slot = cfg.get("Automations", "OnAC", "")
+    bat_slot = cfg.get("Automations", "OnBattery", "")
     in_use = (
         active_mode in (base_name, internal_name)
-        or ac_slot  in (base_name, internal_name)
+        or ac_slot in (base_name, internal_name)
         or bat_slot in (base_name, internal_name)
     )
     if in_use:
@@ -231,7 +223,6 @@ def save_preset(base_name: str, fields: list[dict]) -> str:
             client = get_client()
             if client.ping():
                 client.apply_saved()
-                logging.info("Daemon notified to re-apply updated preset: %s", base_name)
         except Exception:
             pass
 
@@ -239,37 +230,32 @@ def save_preset(base_name: str, fields: list[dict]) -> str:
 
 
 def delete_preset(display_name: str) -> None:
-    base          = display_name.removesuffix("_custom_preset")
+    base = display_name.removesuffix("_custom_preset")
     internal_name = base + "_custom_preset"
-    presets       = [p for p in load_custom_presets() if p["name"] != base]
+    presets = [p for p in load_custom_presets() if p["name"] != base]
     _save_custom_presets(presets)
-    logging.info("Custom preset deleted: %s", base)
 
     changed = False
 
     if cfg.get("User", "Mode") in (internal_name, base):
         cfg.set_config("User", "Mode", "Balance")
         changed = True
-        logging.info("Active preset deleted — User.Mode reset to Balance.")
 
-    ac_slot  = cfg.get("Automations", "OnAC", "")
+    ac_slot = cfg.get("Automations", "OnAC", "")
     bat_slot = cfg.get("Automations", "OnBattery", "")
 
     if ac_slot in (internal_name, base):
         cfg.set_config("Automations", "OnAC", "")
         ac_slot = ""
         changed = True
-        logging.info("Automation OnAC slot cleared (preset deleted).")
 
     if bat_slot in (internal_name, base):
         cfg.set_config("Automations", "OnBattery", "")
         bat_slot = ""
         changed = True
-        logging.info("Automation OnBattery slot cleared (preset deleted).")
 
     if not ac_slot and not bat_slot:
         cfg.set_config("Automations", "Enabled", "0")
-        logging.info("Both automation slots empty — automations disabled.")
         changed = True
 
     if changed:
@@ -299,7 +285,7 @@ def _render_editor(
     preset_name: str,
 ) -> list[str]:
     name_display = preset_name or "(unnamed)"
-    dirty_mark   = f"  {_Y}[*]{_R}" if dirty else ""
+    dirty_mark = f"  {_Y}[*]{_R}" if dirty else ""
     lines: list[str] = [
         f"  {_B}Custom Preset Editor{_R}",
         f"  Name: {_C}{name_display}{_R}{dirty_mark}",
@@ -318,14 +304,14 @@ def _render_editor(
     lines.append(f"  {_B}{_SECTION_TITLES[section]}{_R}")
     lines.append("")
 
-    sec_rows    = _section_indices(fields, section)
+    sec_rows = _section_indices(fields, section)
     active_hint = ""
     for r, gi in enumerate(sec_rows):
-        f    = fields[gi]
-        tog  = f"{_G}[✓]{_R}" if f["enabled"] else f"{_D}[ ]{_R}"
-        lbl  = f"{f['label']:<22}"
+        f = fields[gi]
+        tog = f"{_G}[✓]{_R}" if f["enabled"] else f"{_D}[ ]{_R}"
+        lbl = f"{f['label']:<22}"
         vstr = f"{f['value']:>5} {f['unit']:<4}"
-        rng  = f"[{f['min']}–{f['max']}]"
+        rng = f"[{f['min']}–{f['max']}]"
         if r == row:
             active_hint = f.get("hint", "")
             lines.append(f"  {_C}▶{_R} {tog} {_B}{lbl}{_R}  {_C}{vstr}{_R}  {_D}{rng}{_R}")
@@ -430,7 +416,7 @@ def _do_delete() -> str | None:
 
 def _arrow_pick(title: str, names: list[str]) -> str | None:
     from .ui import menu, MenuItem
-    items  = [MenuItem(_display_name(n), key=n) for n in names]
+    items = [MenuItem(_display_name(n), key=n) for n in names]
     items += [MenuItem("─", kind="separator"), MenuItem("Back", key="back")]
     choice = menu(title, items)
     if choice == -1 or items[choice].key == "back":
@@ -442,17 +428,17 @@ def run_editor(
     initial_fields: list[dict] | None = None,
     initial_name: str = "",
 ) -> None:
-    fields      = copy.deepcopy(initial_fields) if initial_fields else default_fields()
+    fields = copy.deepcopy(initial_fields) if initial_fields else default_fields()
     preset_name = initial_name
-    section     = 1
-    row         = 0
-    dirty       = False
-    prev        = 0
+    section = 1
+    row = 0
+    dirty = False
+    prev = 0
     needs_clear = False
 
     def clamp_row() -> None:
         nonlocal row
-        n   = len(_section_indices(fields, section))
+        n = len(_section_indices(fields, section))
         row = max(0, min(row, n - 1)) if n else 0
 
     sys.stdout.write(termui.HIDE_CURSOR)
@@ -467,18 +453,18 @@ def run_editor(
                 ui_clear()
                 sys.stdout.write(termui.HIDE_CURSOR)
                 sys.stdout.flush()
-                prev        = 0
+                prev = 0
                 needs_clear = False
 
             lines = _render_editor(fields, section, row, dirty, preset_name)
-            prev  = termui.draw_lines(lines, prev)
-            key   = termui.get_key()
+            prev = termui.draw_lines(lines, prev)
+            key = termui.get_key()
 
             if key in (b"1", b"2", b"3", b"4"):
                 new_sec = int(key)
                 if new_sec != section:
                     section = new_sec
-                    row     = 0
+                    row = 0
                 continue
 
             sec_rows = _section_indices(fields, section)
@@ -494,20 +480,20 @@ def run_editor(
                 continue
 
             if key == b" " and sec_rows:
-                f            = fields[sec_rows[row]]
+                f = fields[sec_rows[row]]
                 f["enabled"] = not f["enabled"]
-                dirty        = True
+                dirty = True
                 continue
 
             if key == termui.LEFT and sec_rows:
-                f          = fields[sec_rows[row]]
+                f = fields[sec_rows[row]]
                 f["value"] = clamp_field(f["value"] - f["step"], f)
                 _enforce_igpu_clamp(fields, f["key"])
                 dirty = True
                 continue
 
             if key == termui.RIGHT and sec_rows:
-                f          = fields[sec_rows[row]]
+                f = fields[sec_rows[row]]
                 f["value"] = clamp_field(f["value"] + f["step"], f)
                 _enforce_igpu_clamp(fields, f["key"])
                 dirty = True
@@ -522,18 +508,18 @@ def run_editor(
 
             if key in (b"l", b"L"):
                 needs_clear = True
-                result      = _do_load(fields, dirty)
+                result = _do_load(fields, dirty)
                 if result is not None:
                     fields, preset_name, dirty = result
                 continue
 
             if key in (b"d", b"D"):
-                needs_clear  = True
-                deleted      = _do_delete()
+                needs_clear = True
+                deleted = _do_delete()
                 if deleted and deleted.removesuffix("_custom_preset") == preset_name:
                     preset_name = ""
-                    fields      = default_fields()
-                    dirty       = False
+                    fields = default_fields()
+                    dirty = False
                 continue
 
             if key == termui.ESC:
@@ -575,12 +561,12 @@ def custom_preset_menu() -> None:
 
     saved = load_custom_presets()
     if saved:
-        names  = get_custom_preset_names()
-        items  = [MenuItem(_display_name(n), key=n) for n in names]
+        names = get_custom_preset_names()
+        items = [MenuItem(_display_name(n), key=n) for n in names]
         items += [
-            MenuItem("─",                 kind="separator"),
+            MenuItem("─", kind="separator"),
             MenuItem("Create new preset", key="new"),
-            MenuItem("Back",              key="back"),
+            MenuItem("Back", key="back"),
         ]
         choice = menu("Custom Preset", items)
         if choice == -1 or items[choice].key == "back":
@@ -589,8 +575,8 @@ def custom_preset_menu() -> None:
             fields, name = default_fields(), ""
         else:
             selected = items[choice].key
-            fields   = load_preset_fields(selected) or default_fields()
-            name     = selected.removesuffix("_custom_preset")
+            fields = load_preset_fields(selected) or default_fields()
+            name = selected.removesuffix("_custom_preset")
     else:
         fields, name = default_fields(), ""
 

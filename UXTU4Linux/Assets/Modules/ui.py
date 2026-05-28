@@ -22,6 +22,8 @@ _R = "\033[0m"
 _B = "\033[1m"
 _D = "\033[2m"
 _C = "\033[96m"
+_Y = "\033[33m"
+_G = "\033[32m"
 
 Kind = Literal["action", "toggle", "separator", "disabled"]
 
@@ -29,10 +31,10 @@ Kind = Literal["action", "toggle", "separator", "disabled"]
 @dataclass
 class MenuItem:
     label: str
-    hint:  str  = ""
-    kind:  Kind = "action"
-    key:   str | None = None
-    desc:  str  = ""
+    hint: str = ""
+    kind: Kind = "action"
+    key: str | None = None
+    desc: str = ""
 
     def __post_init__(self) -> None:
         if self.key is None:
@@ -58,7 +60,7 @@ class MenuItem:
 def clear() -> None:
     subprocess.run("clear", shell=True)
     print(f"{_C}{BANNER}{_R}")
-    cpu    = cfg.get("Info", "CPU")
+    cpu = cfg.get("Info", "CPU")
     family = cfg.get("Info", "Family")
     loaded = cfg.get_loaded_preset()
     if cpu and family:
@@ -80,7 +82,7 @@ def confirm(prompt: str) -> bool:
 
 def ask(prompt: str, default: str = "") -> str:
     hint = f" [{default}]" if default else ""
-    val  = input(f"  {prompt}{_D}{hint}{_R}: ").strip()
+    val = input(f"  {prompt}{_D}{hint}{_R}: ").strip()
     return val or default
 
 
@@ -135,11 +137,11 @@ def render_menu(title: str, subtitle: str, items: list[MenuItem], idx: int) -> l
 
 
 def _simple_menu(
-    title:    str,
-    items:    list[MenuItem],
+    title: str,
+    items: list[MenuItem],
     *,
     subtitle: str = "",
-    on_toggle      = None,
+    on_toggle = None,
 ) -> int:
     while True:
         clear()
@@ -178,12 +180,12 @@ def _simple_menu(
 
 
 def menu(
-    title:    str,
-    items:    list[MenuItem],
+    title: str,
+    items: list[MenuItem],
     *,
     subtitle: str = "",
     selected: int = 0,
-    on_toggle      = None,
+    on_toggle = None,
 ) -> int:
     if not termui.is_tty():
         return _simple_menu(title, items, subtitle=subtitle, on_toggle=on_toggle)
@@ -191,13 +193,13 @@ def menu(
     clear()
     sys.stdout.write(termui.HIDE_CURSOR)
     sys.stdout.flush()
-    idx  = _clamp_skip(selected, items)
+    idx = _clamp_skip(selected, items)
     prev = 0
     try:
         while True:
             lines = render_menu(title, subtitle, items, idx)
-            prev  = termui.draw_lines(lines, prev)
-            key   = termui.get_key()
+            prev = termui.draw_lines(lines, prev)
+            key = termui.get_key()
             if key == b"\x03":
                 sys.stdout.write(termui.SHOW_CURSOR + "\n")
                 sys.exit(0)
@@ -239,7 +241,7 @@ def about_menu() -> None:
         items.append(MenuItem("Back", key="back"))
 
         subtitle = "Maintainer: oxGorou\nAdvisor: NotchApple1703"
-        choice   = menu("About UXTU4Linux", items, subtitle=subtitle)
+        choice = menu("About UXTU4Linux", items, subtitle=subtitle)
 
         if choice == -1:
             return

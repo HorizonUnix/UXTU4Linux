@@ -35,7 +35,7 @@ def get_latest_version() -> str:
 
 
 def get_changelog() -> str:
-    req  = urllib.request.Request(cfg.GITHUB_API_URL)
+    req = urllib.request.Request(cfg.GITHUB_API_URL)
     data = json.loads(urllib.request.urlopen(req, timeout=10).read())
     return data.get("body", "No changelog available.")
 
@@ -43,17 +43,17 @@ def get_changelog() -> str:
 def _do_update() -> None:
     url = "https://github.com/HorizonUnix/UXTU4Linux/releases/latest/download/UXTU4Linux.zip"
 
-    script_dir  = os.path.dirname(os.path.realpath(__file__))
-    assets_dir  = os.path.dirname(script_dir)
-    src_dir     = os.path.dirname(assets_dir)
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    assets_dir = os.path.dirname(script_dir)
+    src_dir = os.path.dirname(assets_dir)
     install_dir = os.path.dirname(src_dir)
 
-    zip_path        = os.path.join(install_dir, "UXTU4Linux.zip")
-    new_folder      = os.path.join(install_dir, "UXTU4Linux_new")
-    config_bak      = os.path.join(install_dir, "config.ini.bak")
-    presets_bak     = os.path.join(install_dir, "custom_presets.json.bak")
-    config_src      = os.path.join(assets_dir, "config.ini")
-    presets_src     = os.path.join(assets_dir, "custom_presets.json")
+    zip_path = os.path.join(install_dir, "UXTU4Linux.zip")
+    new_folder = os.path.join(install_dir, "UXTU4Linux_new")
+    config_bak = os.path.join(install_dir, "config.ini.bak")
+    presets_bak = os.path.join(install_dir, "custom.json.bak")
+    config_src = os.path.join(assets_dir, "config.ini")
+    presets_src = os.path.join(assets_dir, "custom.json")
 
     def _sudo(*args: str) -> int:
         return subprocess.run(["sudo", *args]).returncode
@@ -81,7 +81,7 @@ def _do_update() -> None:
         _sudo("rm", "-rf", new_folder)
 
         launch = os.path.join(src_dir, "UXTU4Linux.py")
-        ryzen  = os.path.join(src_dir, "Assets", "Linux", "ryzenadj")
+        ryzen = os.path.join(src_dir, "Assets", "Linux", "ryzenadj")
         for path in (launch, ryzen):
             if os.path.exists(path):
                 subprocess.run(["chmod", "+x", path], check=True)
@@ -90,7 +90,7 @@ def _do_update() -> None:
         if os.path.exists(config_bak):
             shutil.move(config_bak, os.path.join(new_assets, "config.ini"))
         if os.path.exists(presets_bak):
-            shutil.move(presets_bak, os.path.join(new_assets, "custom_presets.json"))
+            shutil.move(presets_bak, os.path.join(new_assets, "custom.json"))
 
         if os.path.exists(zip_path):
             os.remove(zip_path)
@@ -111,7 +111,7 @@ def show_updater() -> None:
     while True:
         clear()
         try:
-            latest    = get_latest_version()
+            latest = get_latest_version()
             changelog = get_changelog()
         except Exception as e:
             print(f"  Could not fetch release info: {e}")
@@ -152,7 +152,7 @@ def check_updates() -> None:
             sys.exit("Quitting.")
         return
 
-    local  = _ver_tuple(cfg.LOCAL_VERSION)
+    local = _ver_tuple(cfg.LOCAL_VERSION)
     remote = _ver_tuple(latest)
 
     if local < remote:

@@ -16,7 +16,7 @@ class DaemonClient:
 
     def __init__(self, addr: str = cfg.ZMQ_SOCKET_ADDR) -> None:
         self._addr = addr
-        self._ctx  = zmq.Context.instance()
+        self._ctx = zmq.Context.instance()
         self._sock: zmq.Socket | None = None
         self._lock = threading.Lock()
 
@@ -25,7 +25,7 @@ class DaemonClient:
             sock = self._ctx.socket(zmq.REQ)
             sock.setsockopt(zmq.RCVTIMEO, self.TIMEOUT_MS)
             sock.setsockopt(zmq.SNDTIMEO, self.TIMEOUT_MS)
-            sock.setsockopt(zmq.LINGER,   0)
+            sock.setsockopt(zmq.LINGER, 0)
             sock.connect(self._addr)
             self._sock = sock
         return self._sock
@@ -62,10 +62,10 @@ class DaemonClient:
 
     def apply_loop(self, args: str, mode: str, interval: int, automation: bool) -> dict:
         return self._send({
-            "cmd":        "apply_loop",
-            "args":       args,
-            "mode":       mode,
-            "interval":   interval,
+            "cmd": "apply_loop",
+            "args": args,
+            "mode": mode,
+            "interval": interval,
             "automation": automation,
         }) or {"ok": False, "error": "daemon not responding"}
 
@@ -74,11 +74,11 @@ class DaemonClient:
 
     def status(self) -> dict:
         return self._send({"cmd": "status"}) or {
-            "ok":          False,
+            "ok": False,
             "running_loop": False,
-            "mode":        "?",
-            "on_ac":       False,
-            "automation":  False,
+            "mode": "?",
+            "on_ac": False,
+            "automation": False,
         }
 
     def apply_saved(self) -> dict:

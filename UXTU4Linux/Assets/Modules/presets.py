@@ -30,7 +30,7 @@ def to_dict(preset: Preset) -> dict:
 
 
 def get_preset_label(cpu_type: str, family: str, cpu_model: str, raw_cpu: str, variant: str = "") -> str:
-    if variant:
+    if variant and _variant_preset(variant) is not None:
         return variant
     if cpu_type == "Amd_Apu":
         return _apu_label(family, cpu_model)
@@ -99,7 +99,9 @@ def _before(family: str, ref: str) -> bool:
 
 def get_preset(cpu_type: str, family: str, cpu_model: str, raw_cpu: str, variant: str = "") -> Preset:
     if variant:
-        return _variant_preset(variant)
+        preset = _variant_preset(variant)
+        if preset is not None:
+            return preset
     if cpu_type == "Amd_Apu":
         return _apu_preset(family, cpu_model)
     if cpu_type == "Amd_Desktop_Cpu":
@@ -107,7 +109,7 @@ def get_preset(cpu_type: str, family: str, cpu_model: str, raw_cpu: str, variant
     return _desktop_standard()
 
 
-def _variant_preset(variant: str) -> Preset:
+def _variant_preset(variant: str) -> Preset | None:
     match variant:
         case "AMDFrameworkLaptop16Ryzen7040_RX7700S":
             return Preset(
@@ -130,7 +132,7 @@ def _variant_preset(variant: str) -> Preset:
                 Performance="--tctl-temp=100 --apu-skin-temp=50 --stapm-limit=28000 --fast-limit=42000 --slow-limit=28000 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000 --vrmgfx-current=180000",
                 Extreme="--tctl-temp=100 --apu-skin-temp=50 --stapm-limit=35000 --fast-limit=60000 --slow-limit=35000 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000 --vrmgfx-current=180000",
             )
-    return _desktop_standard()
+    return None
 
 
 def _apu_preset(family: str, cpu_model: str) -> Preset:

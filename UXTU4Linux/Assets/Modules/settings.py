@@ -12,9 +12,9 @@ def _tog(section: str, key: str, default: str = "0") -> str:
 
 
 _TOGGLE_MAP = {
-    "Apply preset on daemon start": ("Settings", "ApplyOnStart",   "1"),
-    "Software update":              ("Settings", "SoftwareUpdate", "1"),
-    "Debug":                        ("Settings", "Debug",          "1"),
+    "Apply preset on daemon start": ("Settings", "ApplyOnStart", "1"),
+    "Software update": ("Settings", "SoftwareUpdate", "1"),
+    "Debug": ("Settings", "Debug", "1"),
 }
 
 
@@ -50,10 +50,10 @@ def _settings_items() -> list[MenuItem]:
         items.append(MenuItem("Daemon service", "Running" if running else "Stopped"))
         items.append(MenuItem("─", kind="separator"))
     items += [
-        MenuItem("Apply preset on daemon start", _tog("Settings", "ApplyOnStart",   "1"), "toggle"),
-        MenuItem("Software update",              _tog("Settings", "SoftwareUpdate", "1"), "toggle"),
-        MenuItem("Debug",                        _tog("Settings", "Debug",          "1"), "toggle"),
-        MenuItem("─",                            kind="separator"),
+        MenuItem("Apply preset on daemon start", _tog("Settings", "ApplyOnStart", "1"), "toggle"),
+        MenuItem("Software update", _tog("Settings", "SoftwareUpdate", "1"), "toggle"),
+        MenuItem("Debug", _tog("Settings", "Debug", "1"), "toggle"),
+        MenuItem("─", kind="separator"),
         MenuItem("Reset all"),
         MenuItem("Back"),
     ]
@@ -65,7 +65,7 @@ def settings_menu() -> None:
 
     last_idx = 0
     while True:
-        items  = _settings_items()
+        items = _settings_items()
         choice = menu("Settings", items, selected=last_idx, on_toggle=_do_toggle)
         if choice == -1:
             return

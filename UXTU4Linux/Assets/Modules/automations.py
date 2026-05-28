@@ -1,9 +1,8 @@
 """
 automations.py
 """
-from __future__ import annotations
 
-import logging
+from __future__ import annotations
 
 from . import config as cfg
 from .ui import clear, pause, menu, MenuItem
@@ -24,26 +23,21 @@ def get_battery_preset() -> str:
 def set_ac_preset(name: str) -> None:
     cfg.set_config("Automations", "OnAC", name)
     cfg.save()
-    logging.info("Automations: AC preset set to %r", name)
 
 
 def set_battery_preset(name: str) -> None:
     cfg.set_config("Automations", "OnBattery", name)
     cfg.save()
-    logging.info("Automations: Battery preset set to %r", name)
 
 
 def enable_automations() -> None:
     cfg.set_config("Automations", "Enabled", "1")
     cfg.save()
-    logging.info("Automations: enabled")
 
 
 def disable_automations() -> None:
     cfg.set_config("Automations", "Enabled", "0")
     cfg.save()
-    logging.info("Automations: disabled")
-
 
 
 def _resolve_args(preset_name: str) -> str | None:
@@ -66,7 +60,7 @@ def _preset_picker(title: str, current: str) -> str | None:
     from .custom import get_custom_preset_names
 
     builtin_names = list(get_presets().keys())
-    custom_names  = get_custom_preset_names()
+    custom_names = get_custom_preset_names()
 
     items: list[MenuItem] = [
         MenuItem("(None) — use Power Management preset", key="__none__"),
@@ -90,7 +84,7 @@ def _preset_picker(title: str, current: str) -> str | None:
     if item.key == "__none__":
         return ""
 
-    all_names      = builtin_names + custom_names
+    all_names = builtin_names + custom_names
     selectable_idx = [
         i for i, it in enumerate(items)
         if it.is_selectable and it.key not in ("__none__", "back")
@@ -109,7 +103,7 @@ def _notify_daemon() -> None:
         if client.ping():
             client.apply_saved()
     except Exception as exc:
-        logging.debug("Could not notify daemon after automations change: %s", exc)
+        print("Could not notify daemon after automations change: ", exc)
 
 
 def _slot_display(name: str) -> str:
@@ -133,18 +127,18 @@ def _show_info() -> None:
 def automations_menu() -> None:
     while True:
         cfg.load()
-        enabled  = automation_enabled()
-        ac_name  = get_ac_preset()
+        enabled = automation_enabled()
+        ac_name = get_ac_preset()
         bat_name = get_battery_preset()
 
         items: list[MenuItem] = [
-            MenuItem("Override",     "ON" if enabled else "OFF", kind="toggle", key="toggle"),
-            MenuItem("─",            kind="separator"),
-            MenuItem("On Battery",   _slot_display(bat_name), key="set_bat"),
-            MenuItem("On AC Power",  _slot_display(ac_name),  key="set_ac"),
-            MenuItem("─",            kind="separator"),
+            MenuItem("Override", "ON" if enabled else "OFF", kind="toggle", key="toggle"),
+            MenuItem("─", kind="separator"),
+            MenuItem("On Battery", _slot_display(bat_name), key="set_bat"),
+            MenuItem("On AC Power", _slot_display(ac_name),  key="set_ac"),
+            MenuItem("─", kind="separator"),
             MenuItem("ℹ How overrides work", key="info"),
-            MenuItem("Back",                  key="back"),
+            MenuItem("Back", key="back"),
         ]
 
         choice = menu("Automations", items)
