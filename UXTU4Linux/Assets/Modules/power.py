@@ -183,13 +183,13 @@ _PRESET_HINTS: dict[str, str] = {
     "Balance": "Balanced performance and efficiency for everyday use",
     "Performance": "Higher power limits for sustained workloads and faster response",
     "Extreme": "Maximum power limits — highest performance, more heat and power draw",
-    "AC": "Hidden options to improve performance (is set when AC plugged in)",
-    "DC": "Hidden options to improve power efficiency (is set when AC unplugged)",
+    "AC": "Hidden options to improve performance (when AC plugged in)",
+    "DC": "Hidden options to improve power efficiency (when AC unplugged)",
 }
 
 
 def _select_preset_menu(presets: dict, builtin_names: list[str], custom_names: list[str], current: str) -> None:
-    actual_current = _dn(cfg.get("User", "Mode"))
+    actual_current = cfg.get("User", "Mode")
     items: list[MenuItem] = [
         MenuItem(
             n,
