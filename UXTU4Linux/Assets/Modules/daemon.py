@@ -1,6 +1,7 @@
 """
 daemon.py
 """
+
 from __future__ import annotations
 
 import json
@@ -148,7 +149,7 @@ def _resolve_preset_args(preset_name: str) -> tuple[str, str] | None:
 
 
 def _run_ryzenadj(args: str, mode: str) -> str:
-    raw_payload = args.split()
+    raw_payload = shlex.split(args)
     try:
         payload = _validate_ryzenadj_payload(raw_payload)
     except ValueError as exc:
@@ -552,6 +553,7 @@ class PowerDaemon:
         return {"ok": True}
 
     def _cmd_status(self, _msg: dict) -> dict:
+        on_ac = _on_ac()
         with self._lock:
             return {
                 "ok": True,
@@ -560,7 +562,7 @@ class PowerDaemon:
                 "args": self._args,
                 "automation": self._automation,
                 "interval": self._interval,
-                "on_ac": _on_ac(),
+                "on_ac": on_ac,
                 "last_output": self._last_output,
             }
 

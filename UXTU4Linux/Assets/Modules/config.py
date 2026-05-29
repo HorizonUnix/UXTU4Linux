@@ -79,7 +79,7 @@ def ensure_sections(*sections) -> None:
 
 
 def is_debug() -> bool:
-    return get("Settings", "Debug", "1") == "1"
+    return get("Settings", "Debug", "0") == "1"
 
 
 def instance() -> ConfigParser:
