@@ -1,7 +1,6 @@
 """
 daemon.py
 """
-
 from __future__ import annotations
 
 import json
@@ -709,9 +708,14 @@ class PowerDaemon:
 
         while True:
             raw = sock.recv_string()
+            cmd = None
+            try:
+                cmd = json.loads(raw).get("cmd")
+            except json.JSONDecodeError:
+                pass
             resp = self.handle(raw)
             sock.send_string(resp)
-            if json.loads(raw).get("cmd") == "shutdown":
+            if cmd == "shutdown":
                 log.info("Shutdown command received — exiting.")
                 break
 

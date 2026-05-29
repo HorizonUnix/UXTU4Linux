@@ -57,8 +57,6 @@ def _ensure_venv() -> bool:
     if probe.returncode != 0:
         print(f"  Installing pyzmq into {venv_dir} ...")
         print(f"    (to install manually: {_B}sudo {venv_python} -m pip install pyzmq{_R})")
-        def _sudo(*args: str) -> int:
-            return subprocess.run(["sudo", "-p", _SUDO_PROMPT, *args]).returncode
         if _sudo(venv_python, "-m", "pip", "install", "pyzmq", "--quiet") != 0:
             print(f"\n  Failed to install pyzmq.")
             print(f"  Try running manually:")

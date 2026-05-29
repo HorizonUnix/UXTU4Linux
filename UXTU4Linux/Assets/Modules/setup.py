@@ -1,6 +1,7 @@
 """
 setup.py
 """
+
 from __future__ import annotations
 
 import os
@@ -24,15 +25,24 @@ def _apply_defaults() -> None:
     cfg.ensure_sections("User", "Settings", "Info", "Automations")
     if not cfg.get("User", "Mode"):
         cfg.set_config("User", "Mode", "Balance")
-    cfg.set_config("Settings", "Time", "3")
-    cfg.set_config("Settings", "SoftwareUpdate", "1")
-    cfg.set_config("Settings", "ReApply", "0")
-    cfg.set_config("Settings", "ApplyOnStart", "1")
-    cfg.set_config("Settings", "Debug", "0")
-    cfg.set_config("Automations", "Enabled", "0")
-    cfg.set_config("Automations", "OnAC", "")
-    cfg.set_config("Automations", "OnBattery", "")
-    cfg.set_config("Automations", "OnResume", "")
+    if not cfg.get("Settings", "Time"):
+        cfg.set_config("Settings", "Time", "3")
+    if not cfg.get("Settings", "SoftwareUpdate"):
+        cfg.set_config("Settings", "SoftwareUpdate", "1")
+    if not cfg.get("Settings", "ReApply"):
+        cfg.set_config("Settings", "ReApply", "0")
+    if not cfg.get("Settings", "ApplyOnStart"):
+        cfg.set_config("Settings", "ApplyOnStart", "1")
+    if not cfg.get("Settings", "Debug"):
+        cfg.set_config("Settings", "Debug", "0")
+    if not cfg.get("Automations", "Enabled"):
+        cfg.set_config("Automations", "Enabled", "0")
+    if not cfg.get("Automations", "OnAC"):
+        cfg.set_config("Automations", "OnAC", "")
+    if not cfg.get("Automations", "OnBattery"):
+        cfg.set_config("Automations", "OnBattery", "")
+    if not cfg.get("Automations", "OnResume"):
+        cfg.set_config("Automations", "OnResume", "")
 
 
 def _ensure_custom_presets_file() -> None:
