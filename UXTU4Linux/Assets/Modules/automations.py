@@ -20,6 +20,10 @@ def get_battery_preset() -> str:
     return cfg.get("Automations", "OnBattery", "")
 
 
+def get_resume_preset() -> str:
+    return cfg.get("Automations", "OnResume", "")
+
+
 def set_ac_preset(name: str) -> None:
     cfg.set_config("Automations", "OnAC", name)
     cfg.save()
@@ -27,6 +31,11 @@ def set_ac_preset(name: str) -> None:
 
 def set_battery_preset(name: str) -> None:
     cfg.set_config("Automations", "OnBattery", name)
+    cfg.save()
+
+
+def set_resume_preset(name: str) -> None:
+    cfg.set_config("Automations", "OnResume", name)
     cfg.save()
 
 
@@ -121,6 +130,10 @@ def _show_info() -> None:
     print("  each power state transition.\n")
     print("  When Reapply is ON, the active preset is also re-applied every")
     print("  N seconds as usual.\n")
+    print(f"  {'─' * 10} On Resume {'─' * 10}\n")
+    print("  When set, the chosen preset is applied once every time the")
+    print("  system wakes from sleep or suspend.")
+    print("  This works regardless of whether Override is ON or OFF.\n")
     pause()
 
 
@@ -130,14 +143,16 @@ def automations_menu() -> None:
         enabled = automation_enabled()
         ac_name = get_ac_preset()
         bat_name = get_battery_preset()
+        resume_name = get_resume_preset()
 
         items: list[MenuItem] = [
             MenuItem("Override", "ON" if enabled else "OFF", kind="toggle", key="toggle"),
             MenuItem("─", kind="separator"),
             MenuItem("On Battery", _slot_display(bat_name), key="set_bat"),
             MenuItem("On AC Power", _slot_display(ac_name),  key="set_ac"),
+            MenuItem("On Resume",   _slot_display(resume_name), key="set_resume"),
             MenuItem("─", kind="separator"),
-            MenuItem("ℹ How overrides work", key="info"),
+            MenuItem("ℹ How automations work", key="info"),
             MenuItem("Back", key="back"),
         ]
 
@@ -157,7 +172,7 @@ def automations_menu() -> None:
                     _notify_daemon()
                 else:
                     clear()
-                    print("  Configure at least one preset slot before enabling Override.")
+                    print("  Configure at least one AC/Battery preset slot before enabling Override.")
                     pause()
 
         elif key == "set_ac":
@@ -179,6 +194,19 @@ def automations_menu() -> None:
                     disable_automations()
                 if automation_enabled():
                     _notify_daemon()
+
+        elif key == "set_resume":
+            clear()
+            chosen = _preset_picker("Select Resume Preset", resume_name)
+            if chosen is not None:
+                set_resume_preset(chosen)
+                try:
+                    from .ipc import get_client
+                    client = get_client()
+                    if client.ping():
+                        client.reload_config()
+                except Exception:
+                    pass
 
         elif key == "info":
             _show_info()

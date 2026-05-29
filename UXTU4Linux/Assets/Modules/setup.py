@@ -1,7 +1,6 @@
 """
 setup.py
 """
-
 from __future__ import annotations
 
 import os
@@ -33,6 +32,7 @@ def _apply_defaults() -> None:
     cfg.set_config("Automations", "Enabled", "0")
     cfg.set_config("Automations", "OnAC", "")
     cfg.set_config("Automations", "OnBattery", "")
+    cfg.set_config("Automations", "OnResume", "")
 
 
 def _ensure_custom_presets_file() -> None:

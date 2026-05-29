@@ -1,6 +1,7 @@
 """
 daemon.py
 """
+
 from __future__ import annotations
 
 import json
@@ -11,6 +12,7 @@ import shlex
 import signal
 import subprocess
 import sys
+import time
 import threading
 import zmq
 import fcntl
@@ -42,11 +44,17 @@ MAX_INTERVAL_SECONDS = cfg.MAX_INTERVAL_SECONDS
 
 _STOP_LOOP_TIMEOUT_S: int = 10
 _POWER_MONITOR_POLL_S: int = 2
+_SUSPEND_MONITOR_POLL_S: int = 1
+_SUSPEND_GAP_THRESHOLD_S: float = 1.0
 
 _DAEMON_LOCK_FILE = "/run/uxtu4linux_daemon.lock"
 _daemon_lock_fh: object = None
 
 log = logging.getLogger("uxtu4linux")
+
+
+def _clock_boottime() -> float:
+    return time.clock_gettime(time.CLOCK_BOOTTIME)
 
 
 def _acquire_daemon_lock() -> bool:
@@ -216,8 +224,10 @@ class PowerDaemon:
         self._lock = threading.Lock()
         self._loop_thread: threading.Thread | None = None
         self._monitor_thread: threading.Thread | None = None
+        self._suspend_thread: threading.Thread | None = None
         self._stop_evt = threading.Event()
         self._stop_monitor_evt = threading.Event()
+        self._stop_suspend_evt = threading.Event()
         self._mode = ""
         self._args = ""
         self._automation = False
@@ -384,6 +394,64 @@ class PowerDaemon:
         if self._monitor_thread and self._monitor_thread.is_alive():
             self._monitor_thread.join(timeout=_STOP_LOOP_TIMEOUT_S)
 
+    def _suspend_monitor_body(self) -> None:
+        self._stop_suspend_evt.clear()
+        try:
+            last_gap = _clock_boottime() - time.monotonic()
+        except OSError as exc:
+            log.warning(
+                "CLOCK_BOOTTIME unavailable — suspend/resume detection disabled: %s", exc
+            )
+            return
+
+        log.debug(
+            "Suspend monitor started (poll=%ds, threshold=%.1fs).",
+            _SUSPEND_MONITOR_POLL_S, _SUSPEND_GAP_THRESHOLD_S,
+        )
+        while not self._stop_suspend_evt.wait(_SUSPEND_MONITOR_POLL_S):
+            try:
+                current_gap = _clock_boottime() - time.monotonic()
+                delta = current_gap - last_gap
+                if delta > _SUSPEND_GAP_THRESHOLD_S:
+                    log.info(
+                        "Resume from suspend detected (slept≈%.1fs).", delta
+                    )
+                    cfg.load()
+                    preset_name = cfg.get("Automations", "OnResume", "")
+                    if preset_name:
+                        result = _resolve_preset_args(preset_name)
+                        if result:
+                            mode, args = result
+                            self._apply_once(args, mode, log_apply=True)
+                            self._last_logged_mode = mode
+                            log.info("Post-resume preset applied: '%s'.", mode)
+                        else:
+                            log.warning(
+                                "OnResume preset '%s' not found — skipping.", preset_name
+                            )
+                last_gap = current_gap
+            except Exception as exc:
+                log.warning("Suspend monitor tick error: %s", exc)
+        log.debug("Suspend monitor exited.")
+
+    def _start_suspend_monitor(self) -> None:
+        self._stop_suspend_monitor()
+        self._stop_suspend_evt.clear()
+        self._suspend_thread = threading.Thread(
+            target=self._suspend_monitor_body,
+            daemon=True,
+            name="uxtu-suspend-monitor",
+        )
+        self._suspend_thread.start()
+        log.info(
+            "Suspend monitor active (polling every %ds).", _SUSPEND_MONITOR_POLL_S
+        )
+
+    def _stop_suspend_monitor(self) -> None:
+        self._stop_suspend_evt.set()
+        if self._suspend_thread and self._suspend_thread.is_alive():
+            self._suspend_thread.join(timeout=_STOP_LOOP_TIMEOUT_S)
+
     def _start_monitor(self, args: str, mode: str) -> None:
         self._stop_monitor()
         self._stop_monitor_evt.clear()
@@ -537,6 +605,7 @@ class PowerDaemon:
     def _cmd_shutdown(self, _msg: dict) -> dict:
         self._stop_loop()
         self._stop_monitor()
+        self._stop_suspend_monitor()
         return {"ok": True}
 
     def _cmd_dmidecode(self, msg: dict) -> dict:
@@ -614,10 +683,13 @@ class PowerDaemon:
 
         log.info("IPC socket ready: %s", cfg.ZMQ_SOCKET_ADDR)
 
+        self._start_suspend_monitor()
+
         def _sig_handler(*_):
             log.info("Signal received — shutting down.")
             self._stop_loop()
             self._stop_monitor()
+            self._stop_suspend_monitor()
             if os.path.exists(cfg.ZMQ_SOCKET_PATH):
                 os.unlink(cfg.ZMQ_SOCKET_PATH)
             sock.close()
@@ -647,6 +719,7 @@ class PowerDaemon:
             os.unlink(cfg.ZMQ_SOCKET_PATH)
         sock.close()
         ctx.term()
+        self._stop_suspend_monitor()
 
 
 def _apply_on_start(daemon: PowerDaemon) -> None:

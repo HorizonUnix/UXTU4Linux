@@ -53,7 +53,7 @@ def _apu_label(family: str, cpu_model: str) -> str:
 
 def _pre_matisse_label(cpu_model: str) -> str:
     if any(s in cpu_model for s in ("U", "e", "Ce")):
-        return "AMDAPUPreMatisse_U"
+        return "AMDAPUPreMatisse_U_e_Ce"
     if "H" in cpu_model:
         return "AMDAPUPreMatisse_H"
     if "GE" in cpu_model:
