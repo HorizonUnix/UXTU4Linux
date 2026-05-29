@@ -1,3 +1,23 @@
+## [0.7.0]
+
+## What's new?
+
+### Added
+
+- **On Resume**: Configure a preset to apply automatically each time the system wakes from sleep or suspend
+- `OnResume` config key for resume preset selection
+- `Variant` config key to support Framework Laptop hardware detection and dedicated premade presets
+
+### Improved
+
+- Switched to the official musl static ryzenadj binary, replacing the manylinux build
+- Consolidated 25 individual preset files from the `Presets/` folder into a single `presets.py` module for easier maintenance
+- Added descriptions for AC and DC presets
+- Renamed `custom_presets.json` to `custom.json`
+- Various bug fixes
+- Minor UI refinements
+- General codebase cleanup
+
 ## [0.6.02]
 
 ## What's New
