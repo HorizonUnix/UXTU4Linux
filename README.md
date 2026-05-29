@@ -26,7 +26,7 @@ UXTU4Linux is a power management tool for **AMD Ryzen APUs** on Linux. It wraps 
 | Platform | Status |
 |----------|--------|
 | Linux with systemd, Python 3.10+ | ✅ Actively supported |
-| macOS 11 → 26 | ⚠️ Deprecated as of v0.5.22 — [Wiki](https://github.com/HorizonUnix/UXTU4Linux/wiki/macOS-Installation-and-Troubleshooting) |
+| macOS 11 -> 26 | ⚠️ Deprecated as of `v0.5.22`, see [Wiki](https://github.com/HorizonUnix/UXTU4Linux/wiki/macOS-Installation-and-Troubleshooting) |
 
 > [!IMPORTANT]
 > **systemd is required.** Distros using OpenRC, runit, or other init systems are partially supported.
@@ -56,6 +56,10 @@ uxtu4linux
   <img src="/Img/power.png"/>
   <img src="/Img/power_status.png"/>
   <img src="/Img/custom.png"/>
+  <img src="/Img/custom_temp.png"/>
+  <img src="/Img/custom_power.png"/>
+  <img src="/Img/custom_vrm.png"/>
+  <img src="/Img/custom_apu.png"/>
   <img src="/Img/automations.png"/>
   <img src="/Img/settings.png"/>
   <img src="/Img/hardware.png"/>
