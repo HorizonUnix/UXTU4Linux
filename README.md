@@ -66,7 +66,6 @@ uxtu4linux
   <img src="/Img/menu.png"/>
   <img src="/Img/power.png"/>
   <img src="/Img/power_status.png"/>
-  <img src="/Img/custom.png"/>
   <img src="/Img/custom_temp.png"/>
   <img src="/Img/custom_power.png"/>
   <img src="/Img/custom_vrm.png"/>
