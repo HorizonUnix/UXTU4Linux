@@ -381,40 +381,12 @@ def _cpu_type(family: str, arch: str) -> str:
     return "Amd_Apu"
 
 
-def _lspci_vga() -> str:
-    try:
-        result = subprocess.run(
-            ["lspci"],
-            capture_output=True, text=True, timeout=5,
-        )
-        lines = [l for l in result.stdout.splitlines() if "VGA" in l or "Display" in l]
-        return "\n".join(lines).lower()
-    except Exception:
-        return ""
-
-
-def _has_discrete_rx7700s() -> bool:
-    vga = _lspci_vga()
-    return "7700s" in vga or "rx 7700s" in vga
-
-
-def _detect_framework_variant() -> str:
+def _detect_device_variant() -> str:
+    from .device_presets_loader import match_device
     sys_raw = _dmi_raw("system")
-    product = _extract(sys_raw, "Product Name").lower()
-    mfr = _extract(sys_raw, "Manufacturer").lower()
-
-    if "framework" not in mfr:
-        return ""
-
-    if "laptop 16" in product and "7040" in product:
-        if _has_discrete_rx7700s():
-            return "AMDFrameworkLaptop16Ryzen7040_RX7700S"
-        return "AMDFrameworkLaptop16Ryzen7040"
-
-    if "laptop 13" in product and ("7040" in product or "ai 300" in product or "ryzen ai 300" in product):
-        return "AMDFrameworkLaptop13Ryzen7040_RyzenAI300"
-
-    return ""
+    product = _extract(sys_raw, "Product Name")
+    mfr = _extract(sys_raw, "Manufacturer")
+    return match_device(mfr, product)
 
 
 def detect() -> None:
@@ -423,7 +395,7 @@ def detect() -> None:
         cfg.set_config("Info", key, _dmi(field))
     _compute_codename()
 
-    variant = _detect_framework_variant()
+    variant = _detect_device_variant()
     cfg.set_config("Info", "Variant", variant)
 
     cfg.save()
