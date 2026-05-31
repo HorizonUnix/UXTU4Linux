@@ -2,7 +2,6 @@
 <h4>Powered by RyzenAdj and Python</h4>
 
 [![GitHub Downloads](https://img.shields.io/github/downloads/HorizonUnix/UXTU4Linux/total?style=flat-square&color=blue)](https://github.com/HorizonUnix/UXTU4Linux/releases)
-[![Latest Release](https://img.shields.io/github/v/release/HorizonUnix/UXTU4Linux?style=flat-square&color=green)](https://github.com/HorizonUnix/UXTU4Linux/releases/latest)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-yellow?style=flat-square)](https://www.python.org/)
 [![License](https://img.shields.io/github/license/HorizonUnix/UXTU4Linux?style=flat-square)](LICENSE)
 
@@ -46,6 +45,18 @@ For full details, troubleshooting, and manual steps see the **[Wiki](../../wiki)
 ```bash
 uxtu4linux
 ```
+
+---
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=HorizonUnix%2FUXTU4Linux&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=HorizonUnix/UXTU4Linux&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=HorizonUnix/UXTU4Linux&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=HorizonUnix/UXTU4Linux&type=date&legend=top-left" />
+ </picture>
+</a>
 
 ---
 
