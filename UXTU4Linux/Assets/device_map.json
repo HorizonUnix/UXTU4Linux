@@ -1,0 +1,25 @@
+{
+  "framework": [
+    {
+      "match_product": ["laptop 16", "7040"],
+      "require_vga": ["7700s", "rx 7700s"],
+      "variant": "AMDFrameworkLaptop16Ryzen7040_RX7700S"
+    },
+    {
+      "match_product": ["laptop 16", "7040"],
+      "variant": "AMDFrameworkLaptop16Ryzen7040"
+    },
+    {
+      "match_product": ["laptop 13", "7040"],
+      "variant": "AMDFrameworkLaptop13Ryzen7040_RyzenAI300"
+    },
+    {
+      "match_product": ["laptop 13", "ai 300"],
+      "variant": "AMDFrameworkLaptop13Ryzen7040_RyzenAI300"
+    },
+    {
+      "match_product": ["laptop 13", "ryzen ai 300"],
+      "variant": "AMDFrameworkLaptop13Ryzen7040_RyzenAI300"
+    }
+  ]
+}
