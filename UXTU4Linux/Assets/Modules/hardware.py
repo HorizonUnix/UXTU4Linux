@@ -1,7 +1,7 @@
 """
 hardware.py
 """
-import glob, json, os, shutil, subprocess
+import glob, os, shutil, subprocess
 from . import config as cfg
 from .ui import clear, pause, _B, _D, _R
 
@@ -406,27 +406,13 @@ def _detect_framework_variant() -> str:
     if "framework" not in mfr:
         return ""
 
-    map_path = os.path.join(os.path.dirname(__file__), "..", "device_map.json")
-    try:
-        with open(map_path, "r") as f:
-            device_map = json.load(f)
-    except OSError:
-        return ""
+    if "laptop 16" in product and "7040" in product:
+        if _has_discrete_rx7700s():
+            return "AMDFrameworkLaptop16Ryzen7040_RX7700S"
+        return "AMDFrameworkLaptop16Ryzen7040"
 
-    for rule in device_map.get("framework", []):
-        matches_product = all(p in product for p in rule.get("match_product", []))
-        
-        if not matches_product:
-            continue
-            
-        req_vga = rule.get("require_vga", [])
-        if req_vga:
-            vga_out = _lspci_vga()
-            matches_vga = any(v in vga_out for v in req_vga)
-            if not matches_vga:
-                continue
-                
-        return rule["variant"]
+    if "laptop 13" in product and ("7040" in product or "ai 300" in product or "ryzen ai 300" in product):
+        return "AMDFrameworkLaptop13Ryzen7040_RyzenAI300"
 
     return ""
 
