@@ -1,3 +1,12 @@
+## [0.7.01]
+
+## What's new?
+- Added support for the Curve Optimiser (All Core and iGPU) in the Custom Preset Editor.
+
+### Note
+- The Curve Optimiser may not work on your CPU, even if its generation is supported, as it is currently limited to Ryzen 9 SKUs.
+- Support for Curve Optimiser Per-Core is planned for `v0.7.02` due to development branch conflicts and a lack of testing hardware.
+
 ## [0.7.0]
 
 ## What's new?

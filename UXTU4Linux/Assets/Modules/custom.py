@@ -1,7 +1,6 @@
 """
 custom.py
 """
-
 from __future__ import annotations
 
 import copy
@@ -104,14 +103,27 @@ FIELD_DEFS: list[dict[str, Any]] = [
         "enabled": False, "section": 4,
         "hint": "Static boost clock floor. Requires reboot or sleep to revert.",
     },
+    {
+        "key": "coall", "label": "All Core Offset", "arg": "--set-coall",
+        "unit": "", "default": 0, "min": -50, "max": 30, "step": 1,
+        "enabled": False, "section": 5,
+        "hint": "Allows control to change the all core Curve Optimiser Frequency/Voltage curve offset.",
+    },
+    {
+        "key": "cogfx", "label": "iGPU Offset", "arg": "--set-cogfx",
+        "unit": "", "default": 0, "min": -50, "max": 30, "step": 1,
+        "enabled": False, "section": 5,
+        "hint": "Allows control to change the iGPU Curve Optimiser Frequency/Voltage curve offset.",
+    },
 ]
 
-_SECTION_NAMES = {1: "Temp", 2: "Power", 3: "VRM", 4: "iGPU"}
+_SECTION_NAMES = {1: "Temp", 2: "Power", 3: "VRM", 4: "iGPU", 5: "CO"}
 _SECTION_TITLES = {
     1: "APU Temperature Tuning",
     2: "APU Power Tuning",
     3: "APU VRM Tuning",
     4: "iGPU Tuning",
+    5: "Curve Optimiser",
 }
 
 
@@ -153,6 +165,8 @@ def _ryzenadj_value(f: dict) -> int:
     val = f["value"]
     if unit in ("W", "A"):
         return val * 1000
+    if f.get("section") == 5 and val < 0:
+        return 0x100000 + val
     return val
 
 
@@ -293,7 +307,7 @@ def _render_editor(
     ]
 
     tabs = "  "
-    for s in range(1, 5):
+    for s in range(1, 6):
         n = _SECTION_NAMES[s]
         if s == section:
             tabs += f"{_C}{_B}[{s}] {n}{_R}  "
@@ -311,7 +325,7 @@ def _render_editor(
         tog = f"{_G}[✓]{_R}" if f["enabled"] else f"{_D}[ ]{_R}"
         lbl = f"{f['label']:<22}"
         vstr = f"{f['value']:>5} {f['unit']:<4}"
-        rng = f"[{f['min']}–{f['max']}]"
+        rng = f"[{f['min']} – {f['max']}]"
         if r == row:
             active_hint = f.get("hint", "")
             lines.append(f"  {_C}▶{_R} {tog} {_B}{lbl}{_R}  {_C}{vstr}{_R}  {_D}{rng}{_R}")
@@ -460,7 +474,7 @@ def run_editor(
             prev = termui.draw_lines(lines, prev)
             key = termui.get_key()
 
-            if key in (b"1", b"2", b"3", b"4"):
+            if key in (b"1", b"2", b"3", b"4", b"5"):
                 new_sec = int(key)
                 if new_sec != section:
                     section = new_sec
