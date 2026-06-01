@@ -1,7 +1,6 @@
 """
 daemon.py
 """
-
 from __future__ import annotations
 
 import json
@@ -804,7 +803,6 @@ def main() -> None:
             "See: https://github.com/HorizonUnix/UXTU4Linux/wiki/Linux-Troubleshooting"
             "#secure-boot-blocking-ryzenadj"
         )
-        sys.exit(1)
 
     daemon = PowerDaemon()
     on_ready = (

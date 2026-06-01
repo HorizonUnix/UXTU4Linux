@@ -1,3 +1,11 @@
+## [0.7.02]
+
+## Hotfixes
+- The daemon should never exit when detecting that Secure Boot is enabled and the kernel module is unsigned.
+
+## Notes
+- Support for Curve Optimizer Per-Core is postponed due to development branch conflicts and a lack of testing hardware.
+
 ## [0.7.01]
 
 ## What's new?
