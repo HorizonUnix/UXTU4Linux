@@ -21,12 +21,10 @@ BANNER = r"""
 _R = "\033[0m"
 _B = "\033[1m"
 _D = "\033[2m"
-_C = "\033[96m"
 _Y = "\033[33m"
 _G = "\033[32m"
 
 Kind = Literal["action", "toggle", "separator", "disabled"]
-
 
 @dataclass
 class MenuItem:
@@ -124,7 +122,7 @@ def render_menu(title: str, subtitle: str, items: list[MenuItem], idx: int) -> l
             continue
         h = f"  {_D}{item.hint}{_R}" if item.hint else ""
         if i == idx:
-            lines.append(f"  {_C}▶{_R} {_B}{item.label}{_R}{h}")
+            lines.append(f"  {_B}▶{_R} {_B}{item.label}{_R}{h}")
         else:
             lines.append(f"    {_D}{item.label}{_R}{h}")
     active_desc = items[idx].desc if 0 <= idx < len(items) else ""
