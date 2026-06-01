@@ -59,7 +59,7 @@ class MenuItem:
 
 def clear() -> None:
     subprocess.run("clear", shell=True)
-    print(f"{_C}{BANNER}{_R}")
+    print(f"{_B}{BANNER}{_R}")
     cpu = cfg.get("Info", "CPU")
     family = cfg.get("Info", "Family")
     loaded = cfg.get_loaded_preset()
