@@ -10,7 +10,7 @@ from typing import Any
 
 from . import config as cfg
 from . import termui
-from .ui import _R, _B, _D, _C, _Y, _G
+from .ui import _R, _B, _D, _Y, _G
 
 FIELD_DEFS: list[dict[str, Any]] = [
     {
@@ -302,7 +302,7 @@ def _render_editor(
     dirty_mark = f"  {_Y}[*]{_R}" if dirty else ""
     lines: list[str] = [
         f"  {_B}Custom Preset Editor{_R}",
-        f"  Name: {_C}{name_display}{_R}{dirty_mark}",
+        f"  Name: {_B}{name_display}{_R}{dirty_mark}",
         "",
     ]
 
@@ -310,7 +310,7 @@ def _render_editor(
     for s in range(1, 6):
         n = _SECTION_NAMES[s]
         if s == section:
-            tabs += f"{_C}{_B}[{s}] {n}{_R}  "
+            tabs += f"{_B}[{s}] {n}{_R}  "
         else:
             tabs += f"{_D}[{s}] {n}{_R}  "
     lines.append(tabs)
@@ -328,7 +328,7 @@ def _render_editor(
         rng = f"[{f['min']} – {f['max']}]"
         if r == row:
             active_hint = f.get("hint", "")
-            lines.append(f"  {_C}▶{_R} {tog} {_B}{lbl}{_R}  {_C}{vstr}{_R}  {_D}{rng}{_R}")
+            lines.append(f"  {_B}▶{_R} {tog} {_B}{lbl}{_R}  {_B}{vstr}{_R}  {_D}{rng}{_R}")
         else:
             if f["enabled"]:
                 lines.append(f"    {tog} {lbl}  {_D}{vstr}  {rng}{_R}")
