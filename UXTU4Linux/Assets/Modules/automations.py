@@ -93,12 +93,16 @@ def _preset_picker(title: str, current: str) -> str | None:
     if item.key == "__none__":
         return ""
 
-    item = items[choice]
-    if not item.is_selectable:
-        return None
-    if item.key in ("__none__", "back"):
-        return item.key == "__none__" and "" or None
-    return item.key
+    all_names = builtin_names + custom_names
+    selectable_idx = [
+        i for i, it in enumerate(items)
+        if it.is_selectable and it.key not in ("__none__", "back")
+    ]
+    if choice in selectable_idx:
+        idx = selectable_idx.index(choice)
+        if idx < len(all_names):
+            return all_names[idx]
+    return None
 
 
 def _notify_daemon() -> None:
