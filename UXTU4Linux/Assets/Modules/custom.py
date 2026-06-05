@@ -1,6 +1,7 @@
 """
 custom.py
 """
+
 from __future__ import annotations
 
 import copy
@@ -117,27 +118,87 @@ FIELD_DEFS: list[dict[str, Any]] = [
     },
 ]
 
-_SECTION_NAMES = {1: "Temp", 2: "Power", 3: "VRM", 4: "iGPU", 5: "CO"}
+APU_PER_CORE_CO = [
+    {"ccd": 0, "core": i, "key": f"co_ccd1_core{i + 1}", "label": f"CCD1 Core {i + 1}", "section": 6} for i in range(12)
+] + [
+    {"ccd": 1, "core": i, "key": f"co_ccd2_core{i + 1}", "label": f"CCD2 Core {i + 1}", "section": 6} for i in range(12)
+]
+
+for entry in APU_PER_CORE_CO:
+    FIELD_DEFS.append({
+        "key": entry["key"],
+        "label": entry["label"],
+        "arg": "--set-coper",
+        "unit": "",
+        "default": 0,
+        "min": -50,
+        "max": 30,
+        "step": 1,
+        "enabled": False,
+        "section": entry["section"],
+        "hint": "Per-core Curve Optimiser offset.",
+        "ccd": entry["ccd"],
+        "core": entry["core"],
+    })
+
+_SECTION_NAMES = {1: "Temp", 2: "Power", 3: "VRM", 4: "iGPU", 5: "CO", 6: "CO Per-Core"}
 _SECTION_TITLES = {
     1: "APU Temperature Tuning",
     2: "APU Power Tuning",
     3: "APU VRM Tuning",
     4: "iGPU Tuning",
     5: "Curve Optimiser",
+    6: "Curve Optimiser Per-Core",
 }
+
+APU_PER_CORE_SECTION = 6
+APU_PER_CORE_KEYS = [f"co_ccd1_core{i + 1}" for i in range(12)] + [f"co_ccd2_core{i + 1}" for i in range(12)]
 
 
 def _display_name(internal_name: str) -> str:
     return internal_name.removesuffix("_custom_preset")
 
 
-def default_fields() -> list[dict]:
+def default_fields(include_ccd2: bool = True) -> list[dict]:
     fields = []
     for f in FIELD_DEFS:
+        if not include_ccd2 and f.get("section") == APU_PER_CORE_SECTION and int(f.get("ccd", 0)) == 1:
+            continue
         d = dict(f)
         d["value"] = f["default"]
         fields.append(d)
     return fields
+
+
+def _supports_ccd2_apu() -> bool:
+    family = cfg.get("Info", "Family")
+    cpu = cfg.get("Info", "CPU")
+    return family in {"DragonRange", "FireRange", "StrixHalo", "KrackanPoint"} and ("Ryzen 9" in cpu or "395" in cpu or "390" in cpu)
+
+def _special_coper_family() -> bool:
+    return cfg.get("Info", "Family") in {"DragonRange", "FireRange", "StrixHalo"}
+
+
+def _coper_visible_fields() -> list[dict]:
+    fields = _default_fields_for_current_cpu()
+    if not _ccd2_visible():
+        fields = [f for f in fields if not (f.get("section") == APU_PER_CORE_SECTION and int(f.get("ccd", 0)) == 1)]
+    return fields
+
+
+def _default_fields_for_current_cpu() -> list[dict]:
+    return default_fields(include_ccd2=_supports_ccd2_apu())
+
+
+def _apu_per_core_fields() -> list[dict]:
+    return _coper_visible_fields()
+
+
+def _ccd2_visible() -> bool:
+    return _supports_ccd2_apu()
+
+def _special_core_pack() -> bool:
+    return _special_coper_family()
 
 
 def clamp_field(value: int, fdef: dict) -> int:
@@ -170,10 +231,27 @@ def _ryzenadj_value(f: dict) -> int:
     return val
 
 
+def _coper_value(f: dict) -> int:
+    offset = max(-50, min(30, int(f["value"])))
+    magnitude = min(abs(offset), 0xFFFFF)
+    encoded = (0x100000 - magnitude) & 0xFFFFF if offset < 0 else magnitude & 0xFFFFF
+    prefix = (((int(f.get("ccd", 0)) << 4) | 0) << 4 | (int(f.get("core", 0)) % 8 & 15)) << 20
+    return prefix | encoded
+
+
 def build_args(fields: list[dict]) -> str:
     parts = []
     for f in fields:
-        if f["enabled"]:
+        if not f["enabled"]:
+            continue
+        if f["arg"] == "--set-coper":
+            if _special_core_pack():
+                parts.append(f"--set-coper={_coper_value(f)}")
+            else:
+                core = int(f.get("core", 0))
+                encoded = ((core if core < 8 else 7) << 20) | (int(f["value"]) & 0xFFFF)
+                parts.append(f"--set-coper={encoded}")
+        else:
             parts.append(f"{f['arg']}={_ryzenadj_value(f)}")
     return " ".join(parts)
 
@@ -199,12 +277,19 @@ def fields_to_record(base_name: str, fields: list[dict]) -> dict:
 
 
 def record_to_fields(record: dict) -> list[dict]:
-    fields = default_fields()
-    for f in fields:
-        if f["key"] in record:
-            entry = record[f["key"]]
-            f["enabled"] = bool(entry.get("enabled", f["enabled"]))
-            f["value"] = clamp_field(int(entry.get("value", f["default"])), f)
+    fields = _default_fields_for_current_cpu()
+    known = {f["key"] for f in fields}
+    for key, entry in record.items():
+        if key == "name" or key not in known or not isinstance(entry, dict):
+            continue
+        for f in fields:
+            if f["key"] == key:
+                f["enabled"] = bool(entry.get("enabled", f["enabled"]))
+                try:
+                    f["value"] = clamp_field(int(entry.get("value", f["default"])), f)
+                except (TypeError, ValueError):
+                    f["value"] = f["default"]
+                break
     return fields
 
 
@@ -285,8 +370,9 @@ def delete_preset(display_name: str) -> None:
 
 def load_preset_fields(display_name: str) -> list[dict] | None:
     base = display_name.removesuffix("_custom_preset")
-    for p in load_custom_presets():
-        if p["name"] == base:
+    presets = load_custom_presets()
+    for p in presets:
+        if p.get("name") == base:
             return record_to_fields(p)
     return None
 
@@ -306,14 +392,22 @@ def _render_editor(
         "",
     ]
 
-    tabs = "  "
-    for s in range(1, 6):
+    tabs1 = "  "
+    for s in range(1, 4):
         n = _SECTION_NAMES[s]
         if s == section:
-            tabs += f"{_B}[{s}] {n}{_R}  "
+            tabs1 += f"{_B}[{s}] {n}{_R}  "
         else:
-            tabs += f"{_D}[{s}] {n}{_R}  "
-    lines.append(tabs)
+            tabs1 += f"{_D}[{s}] {n}{_R}  "
+    tabs2 = "  "
+    for s in range(4, 7):
+        n = _SECTION_NAMES[s]
+        if s == section:
+            tabs2 += f"{_B}[{s}] {n}{_R}  "
+        else:
+            tabs2 += f"{_D}[{s}] {n}{_R}  "
+    lines.append(tabs1.rstrip())
+    lines.append(tabs2.rstrip())
     lines.append(f"  {'─' * 48}")
     lines.append(f"  {_B}{_SECTION_TITLES[section]}{_R}")
     lines.append("")
@@ -442,7 +536,7 @@ def run_editor(
     initial_fields: list[dict] | None = None,
     initial_name: str = "",
 ) -> None:
-    fields = copy.deepcopy(initial_fields) if initial_fields else default_fields()
+    fields = copy.deepcopy(initial_fields) if initial_fields else _apu_per_core_fields()
     preset_name = initial_name
     section = 1
     row = 0
@@ -474,7 +568,7 @@ def run_editor(
             prev = termui.draw_lines(lines, prev)
             key = termui.get_key()
 
-            if key in (b"1", b"2", b"3", b"4", b"5"):
+            if key in (b"1", b"2", b"3", b"4", b"5", b"6"):
                 new_sec = int(key)
                 if new_sec != section:
                     section = new_sec
@@ -561,15 +655,9 @@ def custom_preset_menu() -> None:
     from .ui import clear, pause, menu, MenuItem
 
     cpu_type = cfg.get("Info", "Type")
-    if cpu_type == "Amd_Desktop_Cpu":
+    if cpu_type != "Amd_Apu":
         clear()
-        print("  Custom Preset editor is not supported on desktop CPUs.")
-        print("  APU-specific ryzenadj parameters are not available for this processor.")
-        pause()
-        return
-    if cpu_type == "Intel":
-        clear()
-        print("  Custom Preset editor is not supported on Intel CPUs.")
+        print("  Custom Preset editor is only supported on AMD APUs.")
         pause()
         return
 
@@ -586,13 +674,13 @@ def custom_preset_menu() -> None:
         if choice == -1 or items[choice].key == "back":
             return
         if items[choice].key == "new":
-            fields, name = default_fields(), ""
+            fields, name = _apu_per_core_fields(), ""
         else:
             selected = items[choice].key
-            fields = load_preset_fields(selected) or default_fields()
+            fields = load_preset_fields(selected) or _apu_per_core_fields()
             name = selected.removesuffix("_custom_preset")
     else:
-        fields, name = default_fields(), ""
+        fields, name = _apu_per_core_fields(), ""
 
     clear()
     run_editor(initial_fields=fields, initial_name=name)
