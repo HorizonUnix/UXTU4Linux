@@ -90,20 +90,18 @@ def main() -> None:
     show_custom = cpu_type not in ("Amd_Desktop_Cpu", "Intel", "Unknown")
 
     items: list[MenuItem] = [MenuItem("Power Management")]
+    actions = [preset_menu]
     if show_custom:
         items.append(MenuItem("Custom Preset"))
-    items += [
+        actions.append(custom_preset_menu)
+    items.extend([
         MenuItem("Automations"),
         MenuItem("Hardware Information"),
         MenuItem("Settings"),
         MenuItem("About"),
         MenuItem("Quit"),
-    ]
-
-    if show_custom:
-        actions = [preset_menu, custom_preset_menu, automations_menu, hardware_info, settings_menu, about_menu, quit_app]
-    else:
-        actions = [preset_menu, automations_menu, hardware_info, settings_menu, about_menu, quit_app]
+    ])
+    actions.extend([automations_menu, hardware_info, settings_menu, about_menu, quit_app])
 
     while True:
         choice = menu("Menu", items)

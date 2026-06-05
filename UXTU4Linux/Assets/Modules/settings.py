@@ -77,8 +77,6 @@ def settings_menu() -> None:
             return
         elif lbl == "Daemon service":
             daemon_menu()
-        elif lbl in _TOGGLE_MAP:
-            _do_toggle(choice, items)
         elif lbl == "Reset all":
             _reset_all()
 

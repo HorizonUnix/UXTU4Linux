@@ -206,8 +206,7 @@ def _load_saved_preset() -> PresetState | None:
                 return None
 
     reapply = cfg.get("Settings", "ReApply", "0") == "1"
-    cfg_default = int(cfg.get("Settings", "Time", "3"))
-    interval = cfg.parse_interval(cfg.get("Settings", "Time", str(cfg_default)), cfg_default)
+    interval = cfg.parse_interval(cfg.get("Settings", "Time", "3"), default=3)
 
     return PresetState(
         mode = user_mode,
@@ -268,6 +267,7 @@ class PowerDaemon:
         power_state = "AC" if current_ac else "Battery"
         config_key = "OnAC" if current_ac else "OnBattery"
         preset_name = cfg.get("Automations", config_key, "")
+        base_mode = base_mode or "Unknown"
 
         if not preset_name:
             log.debug(
@@ -491,8 +491,7 @@ class PowerDaemon:
     def _cmd_apply_loop(self, msg: dict) -> dict:
         args = msg.get("args", "")
         mode = msg.get("mode", "Unknown")
-        cfg_default = int(cfg.get("Settings", "Time", "3"))
-        interval = cfg.parse_interval(msg.get("interval", cfg_default), cfg_default)
+        interval = cfg.parse_interval(msg.get("interval", cfg.get("Settings", "Time", "3")), default=3)
         automation = bool(msg.get("automation", False))
 
         log.debug(
@@ -554,7 +553,7 @@ class PowerDaemon:
     def _cmd_status(self, _msg: dict) -> dict:
         on_ac = _on_ac()
         with self._lock:
-            return {
+            status = {
                 "ok": True,
                 "running_loop": self._running_loop,
                 "mode": self._mode,
@@ -564,6 +563,7 @@ class PowerDaemon:
                 "on_ac": on_ac,
                 "last_output": self._last_output,
             }
+        return status
 
     def _cmd_apply_saved(self, _msg: dict) -> dict:
         try:

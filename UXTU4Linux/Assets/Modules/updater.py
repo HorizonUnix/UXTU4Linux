@@ -1,7 +1,6 @@
 """
 updater.py
 """
-
 import json
 import os
 import shutil
@@ -29,9 +28,12 @@ def _ver_tuple(v: str) -> tuple:
     return tuple(parts)
 
 
-def get_latest_version() -> str:
-    url = urllib.request.urlopen(cfg.LATEST_VER_URL, timeout=10).geturl()
+def _release_url(url: str) -> str:
     return url.rstrip("/").split("/")[-1]
+
+
+def get_latest_version() -> str:
+    return _release_url(urllib.request.urlopen(cfg.LATEST_VER_URL, timeout=10).geturl())
 
 
 def get_changelog() -> str:

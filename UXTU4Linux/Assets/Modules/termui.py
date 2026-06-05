@@ -25,11 +25,7 @@ def _visible_len(s: str) -> int:
 def _physical_rows(lines: list[str], width: int) -> int:
     if width <= 0:
         return len(lines)
-    total = 0
-    for line in lines:
-        vlen = _visible_len(line)
-        total += max(1, (vlen + width - 1) // width)
-    return total
+    return sum(max(1, (len(_ANSI_RE.sub("", line)) + width - 1) // width) for line in lines)
 
 
 def is_tty() -> bool:

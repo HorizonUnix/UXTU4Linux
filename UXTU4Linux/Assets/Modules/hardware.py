@@ -11,12 +11,8 @@ _SBIN_PATHS = "/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/sbin:/usr/local/bin"
 
 def _find_dmidecode() -> str | None:
     user_path = os.environ.get("PATH", "")
-    combined = user_path + (":" if user_path else "") + _SBIN_PATHS
-    seen: list[str] = []
-    for p in combined.split(":"):
-        if p and p not in seen:
-            seen.append(p)
-    return shutil.which("dmidecode", path=":".join(seen))
+    parts = [p for p in (user_path.split(":") if user_path else []) + _SBIN_PATHS.split(":") if p]
+    return shutil.which("dmidecode", path=":".join(dict.fromkeys(parts)))
 
 
 def check_binaries() -> None:

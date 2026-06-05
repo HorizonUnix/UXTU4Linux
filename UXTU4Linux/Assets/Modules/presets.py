@@ -1,7 +1,6 @@
 """
 presets.py
 """
-
 from dataclasses import dataclass, asdict
 
 
@@ -254,25 +253,8 @@ def _post_matisse_apu(cpu_model: str) -> Preset:
 
 
 def _desktop_preset(family: str, cpu_model: str, raw_cpu: str) -> Preset:
-    is_ryzen9 = "Ryzen 9" in raw_cpu
-
-    if _before(family, "Raphael"):
-        if "E" in cpu_model:
-            return _desktop_standard()
-        if "X3D" in cpu_model:
-            return _desktop_x3d()
-        if "X" in cpu_model and is_ryzen9:
-            return _desktop_standard()
-        if "X" in cpu_model:
-            return _desktop_standard()
-        return _desktop_standard()
-
-    if "E" in cpu_model:
-        return _desktop_standard()
     if "X3D" in cpu_model:
         return _desktop_x3d()
-    if "X" in cpu_model and is_ryzen9:
-        return _desktop_standard()
     return _desktop_standard()
 
 

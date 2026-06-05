@@ -108,13 +108,13 @@ FIELD_DEFS: list[dict[str, Any]] = [
         "key": "coall", "label": "All Core Offset", "arg": "--set-coall",
         "unit": "", "default": 0, "min": -50, "max": 30, "step": 1,
         "enabled": False, "section": 5,
-        "hint": "Allows control to change the all core Curve Optimiser Frequency/Voltage curve offset.",
+        "hint": "Allows control to all core Curve Optimiser Frequency/Voltage curve offset.",
     },
     {
         "key": "cogfx", "label": "iGPU Offset", "arg": "--set-cogfx",
         "unit": "", "default": 0, "min": -50, "max": 30, "step": 1,
         "enabled": False, "section": 5,
-        "hint": "Allows control to change the iGPU Curve Optimiser Frequency/Voltage curve offset.",
+        "hint": "Allows control to iGPU Curve Optimiser Frequency/Voltage curve offset.",
     },
 ]
 
@@ -136,7 +136,7 @@ for entry in APU_PER_CORE_CO:
         "step": 1,
         "enabled": False,
         "section": entry["section"],
-        "hint": "Per-core Curve Optimiser offset.",
+        "hint": "Allows control to per-core Curve Optimiser Frequency/Voltage curve offset.",
         "ccd": entry["ccd"],
         "core": entry["core"],
     })

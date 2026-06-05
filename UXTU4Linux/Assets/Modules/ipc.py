@@ -44,7 +44,7 @@ class DaemonClient:
                 sock = self._get_sock()
                 sock.send_string(json.dumps(cmd))
                 return json.loads(sock.recv_string())
-            except zmq.ZMQError:
+            except (zmq.ZMQError, json.JSONDecodeError):
                 self._reset_sock()
                 return None
 

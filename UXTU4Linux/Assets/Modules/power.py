@@ -1,7 +1,6 @@
 """
 power.py
 """
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -189,11 +188,10 @@ _PRESET_HINTS: dict[str, str] = {
 
 
 def _select_preset_menu(presets: dict, builtin_names: list[str], custom_names: list[str], current: str) -> None:
-    actual_current = cfg.get("User", "Mode")
     items: list[MenuItem] = [
         MenuItem(
             n,
-            hint="← current" if n == actual_current else "",
+            hint="← current" if n == current else "",
             desc=_PRESET_HINTS.get(n, ""),
             key=n,
         )
@@ -204,7 +202,7 @@ def _select_preset_menu(presets: dict, builtin_names: list[str], custom_names: l
         items += [
             MenuItem(
                 n.removesuffix("_custom_preset"),
-                hint="← current" if n == actual_current else "",
+                hint="← current" if n == current else "",
                 key=n,
             )
             for n in custom_names
@@ -212,11 +210,11 @@ def _select_preset_menu(presets: dict, builtin_names: list[str], custom_names: l
     items += [MenuItem("─", kind="separator"), MenuItem("Back", key="back")]
 
     choice = menu("Select Preset", items)
-    if choice == -1 or items[choice].key == "back":
+    if choice == -1:
         return
 
     selected_key = items[choice].key
-    if selected_key and selected_key in presets:
+    if selected_key and selected_key != "back" and selected_key in presets:
         set_current_preset(selected_key, presets[selected_key])
 
 

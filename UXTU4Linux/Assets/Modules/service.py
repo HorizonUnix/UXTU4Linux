@@ -1,7 +1,6 @@
 """
 service.py
 """
-
 from __future__ import annotations
 
 import os
@@ -150,7 +149,8 @@ def install_service() -> None:
     if not _ensure_venv():
         print("  Aborting service installation due to venv errors.")
         return
-    if not _sudo_write(SERVICE_FILE, _render_unit()):
+    unit = _render_unit()
+    if not _sudo_write(SERVICE_FILE, unit):
         print("  Failed to write service file.")
         return
     _systemctl("daemon-reload")

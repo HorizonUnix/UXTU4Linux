@@ -113,18 +113,16 @@ def _nav_step(idx: int, d: int, items: list[MenuItem]) -> int:
 def render_menu(title: str, subtitle: str, items: list[MenuItem], idx: int) -> list[str]:
     lines: list[str] = [f"  {_B}{title}{_R}"]
     if subtitle:
-        for line in subtitle.split("\n"):
-            lines.append(f"  {_D}{line}{_R}")
+        lines.extend(f"  {_D}{line}{_R}" for line in subtitle.split("\n"))
     lines.append("")
     for i, item in enumerate(items):
         if item.is_separator:
             lines.append(f"  {_D}{'─' * 40}{_R}")
             continue
-        h = f"  {_D}{item.hint}{_R}" if item.hint else ""
-        if i == idx:
-            lines.append(f"  {_B}▶{_R} {_B}{item.label}{_R}{h}")
-        else:
-            lines.append(f"    {_D}{item.label}{_R}{h}")
+        hint = f"  {_D}{item.hint}{_R}" if item.hint else ""
+        prefix = f"  {_B}▶{_R} {_B}" if i == idx else "    "
+        suffix = f"{_R}{hint}" if i == idx else hint
+        lines.append(f"{prefix}{item.label}{suffix}")
     active_desc = items[idx].desc if 0 <= idx < len(items) else ""
     if active_desc:
         lines.append("")
