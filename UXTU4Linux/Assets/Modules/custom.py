@@ -514,7 +514,7 @@ def _do_delete() -> str | None:
         return None
 
     choice = _arrow_pick("Delete Preset", names)
-    if choice:
+    if choice is not None:
         from .ui import confirm
         if confirm(f"Delete '{_display_name(choice)}'? This cannot be undone"):
             delete_preset(choice)
@@ -626,7 +626,7 @@ def run_editor(
                 deleted = _do_delete()
                 if deleted and deleted.removesuffix("_custom_preset") == preset_name:
                     preset_name = ""
-                    fields = default_fields()
+                    fields = _apu_per_core_fields()
                     dirty = False
                 continue
 
