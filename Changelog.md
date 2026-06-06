@@ -1,3 +1,11 @@
+## [0.7.1]
+
+## What's new?
+- Added support for the Curve Optimiser Per-Core (AMD CCD1/CCD2) in the Custom Preset Editor.
+
+### Note
+- This is the last version to utilize `ryzenadj` as the backend.We are switching to a sysfs-based SMU mailbox protocol by utilizing the `ryzen_smu` kernel module.
+
 ## [0.7.02]
 
 ## Hotfixes
