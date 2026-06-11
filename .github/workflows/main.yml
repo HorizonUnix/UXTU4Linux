@@ -1,0 +1,45 @@
+name: Push Release
+on: workflow_dispatch
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.1.1
+        with:
+          show-progress: false
+
+      - name: Fetch release tag
+        id: get-tag
+        shell: bash
+        run: |
+          LATEST_TAG="$(grep -m 1 -o '## \[.*\]' Changelog.md | awk -F'[][]' '{print $2}')"
+          echo "TAG=$LATEST_TAG" >> "$GITHUB_ENV"
+
+      - name: Zip release
+        run: zip -r UXTU4Linux.zip UXTU4Linux
+
+      - name: Generate release notes
+        shell: bash
+        run: |
+          cat > "${{ github.workspace }}-RELEASE_NOTES.txt" << 'HEADER'
+          # Installation
+          ```bash
+          curl -fsSL https://raw.githubusercontent.com/HorizonUnix/UXTU4Linux/main/install.sh | bash
+          ```
+
+          HEADER
+          sed -n "/## \[$TAG\]/,/## \[/p" Changelog.md | sed -e '1,2d;$d' \
+            >> "${{ github.workspace }}-RELEASE_NOTES.txt"
+        env:
+          TAG: ${{ env.TAG }}
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ env.TAG }}
+          tag_name: ${{ env.TAG }}
+          body_path: ${{ github.workspace }}-RELEASE_NOTES.txt
+          files: UXTU4Linux.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

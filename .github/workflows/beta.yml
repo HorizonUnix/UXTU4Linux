@@ -1,0 +1,45 @@
+name: Push Beta
+on: workflow_dispatch
+jobs:
+  beta:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Zip release
+        run: zip -r UXTU4Linux.zip UXTU4Linux
+
+      - name: Generate beta notes
+        shell: bash
+        run: |
+          cat > "${{ github.workspace }}-BETA_NOTES.txt" << 'HEADER'
+          > [!WARNING]
+          > **This is an unstable pre-release build. Features may be broken, incomplete, or change without notice.**
+
+          HEADER
+
+          echo "## Recent Commits" >> "${{ github.workspace }}-BETA_NOTES.txt"
+          git log -5 --pretty=format:"- \`%h\` %s" >> "${{ github.workspace }}-BETA_NOTES.txt"
+
+      - name: Delete existing beta release
+        run: gh release delete U4L-Beta --yes 2>/dev/null || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Force-move beta tag
+        run: |
+          git tag -f U4L-Beta
+          git push origin U4L-Beta --force
+
+      - name: Create beta release
+        run: |
+          gh release create U4L-Beta UXTU4Linux.zip \
+            --title "U4L Beta Build" \
+            --notes-file "${{ github.workspace }}-BETA_NOTES.txt" \
+            --prerelease
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
