@@ -1,3 +1,45 @@
+## [0.8.0]
+
+Starting from v0.8.0 we rebuilt UXTU4Linux from the ground up. The old version relied on a bundled `ryzenadj` binary to do the actual work; this one talks to your CPU directly, the same way the original Universal x86 Tuning Utility does on Windows. Along the way almost every part of the app got reworked: the preset engine, the Custom Preset Editor, the background daemon, the installer, the logs and the documentation. It is the biggest release UXTU4Linux has ever had, and the closest it has ever been to the real UXTU experience on Linux.
+
+## Talks to your CPU directly
+
+UXTU4Linux now sends commands straight to the CPU through the [ryzen_smu](https://github.com/amkillam/ryzen_smu) kernel module, and every command was checked one-to-one against the original UXTU, so presets behave exactly like they do on Windows. You also get honest feedback: the app shows you which commands your CPU accepted and which it rejected, instead of just hoping for the best.
+
+> **Heads up before you update**: this release needs the `ryzen_smu` kernel module (version 0.1.7 or newer). It takes a few minutes to set up and the [installation guide](https://github.com/HorizonUnix/UXTU4Linux/wiki/Linux-Installation#2-install-the-ryzen_smu-kernel-module) walks you through it step by step for your distro, Secure Boot included.
+
+## Your presets can now control the whole machine
+
+The Custom Preset Editor has a new System section, so one preset can set up everything at once:
+
+- **Power Profile**: Power Saver, Balanced or Performance.
+- **ASUS Performance Mode**: Silent, Balanced or Turbo fan modes on ASUS laptops.
+- **ASUS GPU Eco**: turn the discrete GPU off to save battery.
+- **ASUS GPU MUX**: switch between dGPU (Ultimate) and Optimus (Hybrid) mode. Applies after a reboot.
+- **CCD Affinity**: on dual-CCD CPUs like the X3D chips, keep your games on the V-Cache die.
+
+And if you have an NVIDIA card, the editor can now cap its max clock and set core/VRAM offsets too.
+
+## More to tune
+
+New fields in the editor: AMD Boost Profile, PBO Scalar, soft clock limits (CPU, Infinity Fabric, SoC, video engine and data clocks), and static overclocking with CPU clock and voltage. Every field has the same description as the original UXTU, so guides written for the Windows version apply directly.
+
+## Easier to live with
+
+- **Logs you can actually read**: the daemon now tells you what happened and why, like `Applied preset 'Eco' (power source changed from AC to battery).` or `Applied preset 'Performance' (woke from suspend after ~32m).`
+- **Clearer errors**: if something is missing at startup, the app tells you exactly what and links you to the exact wiki section that fixes it, instead of dumping a wall of commands.
+- **A proper status screen**: daemon version, power source, active preset, auto-reapply, automations and whether your last preset was accepted, all in one place.
+- **A friendlier setup**: the first-run wizard is three clear steps, and there's a guided path for systems without systemd.
+- **A smarter installer**: installs what it needs through your package manager and updates existing installations safely.
+
+## Documentation
+
+There's now a full [wiki](https://github.com/HorizonUnix/UXTU4Linux/wiki): step-by-step installation for every major distro, a troubleshooting page, a guide to the Custom Preset Editor, a reference explaining every single parameter, and developer documentation for contributors.
+
+## Removed
+
+- The bundled `ryzenadj` binary (replaced by the native backend)
+
 ## [0.7.1]
 
 ## What's new?

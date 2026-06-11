@@ -1,26 +1,9 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 
 from . import config as cfg
 from .ui import menu, clear, ask, pause, MenuItem, _B, _D, _G, _R, _Y, _SEP_W
-
-
-def _apply_display_args(args: str) -> None:
-    m = re.search(r"--sys-refresh-rate=(\d+)", args)
-    if m is None:
-        return
-    hz = int(m.group(1))
-    try:
-        from . import display
-        ok = display.set_rate(hz)
-    except Exception:
-        ok = False
-    if not ok:
-        print(f"\n  {_Y}Could not set the refresh rate to {hz} Hz.{_R}")
-        print(f"  {_D}Your desktop may need an extra tool (e.g. wlr-randr) — see the wiki's installation guide.{_R}")
-        pause()
 
 
 def _strip_cpu_name(raw: str) -> str:
@@ -87,8 +70,6 @@ def apply_smu(args: str, user_mode: str, *, save_to_config: bool = True) -> None
         client.apply_saved()
     else:
         client.apply(args=args, mode=user_mode)
-
-    _apply_display_args(args)
 
 
 def update_reapply_interval(val: str) -> bool:

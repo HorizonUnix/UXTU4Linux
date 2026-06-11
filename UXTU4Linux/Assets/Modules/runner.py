@@ -581,8 +581,6 @@ def _apply_system(name: str, raw: int, lines: list[str]) -> None:
         lines.append(platformctl.set_asus_mux(raw))
     elif name == "sys-ccd-affinity":
         lines.append(platformctl.set_ccd_affinity(raw))
-    elif name == "sys-refresh-rate":
-        lines.append(f"refresh-rate -> {raw} Hz")
     else:
         lines.append(f"{name} -> unknown system setting")
 

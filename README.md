@@ -13,7 +13,7 @@ UXTU4Linux is a power management tool for **AMD Ryzen APUs and desktop CPUs** on
 **What it can do:**
 - Built-in Eco / Balance / Performance / Extreme presets for a wide range of Ryzen APUs, desktop CPUs and Framework Laptops
 - Custom Preset Editor with around 65 tunable parameters on APUs: power and temperature limits, VRM currents, clock targets, Curve Optimiser (all-core, iGPU and per-core), static OC and more
-- System settings in the same preset: power profile (the Linux equivalent of the Windows power mode), ASUS performance mode / GPU Eco / GPU MUX, display refresh rate, and CCD affinity on dual-CCD chips
+- System settings in the same preset: power profile (the Linux equivalent of the Windows power mode), ASUS performance mode / GPU Eco / GPU MUX, and CCD affinity on dual-CCD chips
 - NVIDIA dGPU clock limits and core/memory offsets via nvidia-smi and NVML
 - Automations: switch presets automatically on AC/battery changes and on resume from suspend
 - Auto-reapply on a timer, so competing power management tools can't silently undo your settings
@@ -86,6 +86,6 @@ The first run walks you through setting up the daemon and detecting your hardwar
 | [FlyGoat](https://github.com/FlyGoat) | [RyzenAdj](https://github.com/FlyGoat/RyzenAdj) |
 | [JamesCJ60](https://github.com/JamesCJ60) | [UXTU](https://github.com/JamesCJ60/Universal-x86-Tuning-Utility) preset design and inspiration |
 | [amkillam](https://github.com/amkillam) | [ryzen_smu](https://github.com/amkillam/ryzen_smu) DKMS fork |
-| [utajum](https://github.com/utajum) | [g-helper-linux](https://github.com/utajum/g-helper-linux) reference for ASUS WMI, power profile and refresh rate support |
+| [utajum](https://github.com/utajum) | [g-helper-linux](https://github.com/utajum/g-helper-linux) reference for ASUS WMI and power profile support |
 | [b00t0x](https://github.com/b00t0x) | Guidance on ryzenadj build dependencies |
 | [NotchApple1703](https://github.com/NotchApple1703) | Advisor |

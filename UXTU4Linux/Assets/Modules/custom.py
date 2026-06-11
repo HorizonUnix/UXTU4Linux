@@ -329,12 +329,6 @@ _SYS_FIELDS: list[dict[str, Any]] = [
         "hint": "Controls the ASUS performance mode, like the Silent, Balanced and Turbo modes within Armoury Crate",
     },
     {
-        "key": "refresh_rate", "label": "Refresh Rate", "arg": "--sys-refresh-rate",
-        "unit": "Hz", "default": 60, "min": 30, "max": 480, "step": 1,
-        "enabled": False, "section": SYS_SECTION, "system_check": "refresh", "rates": True,
-        "hint": "Controls the refresh rate of your display, available rates are detected from your display session",
-    },
-    {
         "key": "asus_gpu_eco", "label": "ASUS GPU Eco", "arg": "--sys-asus-eco",
         "unit": "", "default": 0, "min": 0, "max": 1, "step": 1,
         "enabled": False, "section": SYS_SECTION, "system_check": "asus_eco",
@@ -380,7 +374,7 @@ APU_SECTION_TITLES = {
     7: "Soft Clock Limits",
     OC_SECTION: "CPU Tuning",
     NV_SECTION: "NVIDIA GPU",
-    SYS_SECTION: "System & Display",
+    SYS_SECTION: "System",
 }
 
 DT_SECTION_NAMES = {1: "Thermal", 2: "Power", 3: "PBO/CO", 4: "CO Per-Core", OC_SECTION: "OC", NV_SECTION: "NV GPU", SYS_SECTION: "System"}
@@ -391,7 +385,7 @@ DT_SECTION_TITLES = {
     4: "Curve Optimiser Per-Core",
     OC_SECTION: "CPU Tuning",
     NV_SECTION: "NVIDIA GPU",
-    SYS_SECTION: "System & Display",
+    SYS_SECTION: "System",
 }
 
 APU_PER_CORE_SECTION = 6
@@ -446,49 +440,24 @@ def has_nvidia() -> bool:
 
 
 _sys_support: dict[str, bool] = {}
-_rates_cache: list[int] | None = None
-
-
-def _available_rates() -> list[int]:
-    global _rates_cache
-    if _rates_cache is None:
-        try:
-            from . import display
-            _rates_cache = display.get_rates()
-        except Exception:
-            _rates_cache = []
-    return _rates_cache
 
 
 def _system_supported(kind: str) -> bool:
     if kind not in _sys_support:
         try:
-            if kind == "refresh":
-                _sys_support[kind] = bool(_available_rates())
-            else:
-                from . import platformctl
-                checks = {
-                    "power_profile": platformctl.power_profile_available,
-                    "asus": platformctl.asus_available,
-                    "asus_eco": platformctl.asus_eco_available,
-                    "asus_mux": platformctl.asus_mux_available,
-                    "ccd": platformctl.ccd_affinity_available,
-                }
-                fn = checks.get(kind)
-                _sys_support[kind] = fn() if fn else False
+            from . import platformctl
+            checks = {
+                "power_profile": platformctl.power_profile_available,
+                "asus": platformctl.asus_available,
+                "asus_eco": platformctl.asus_eco_available,
+                "asus_mux": platformctl.asus_mux_available,
+                "ccd": platformctl.ccd_affinity_available,
+            }
+            fn = checks.get(kind)
+            _sys_support[kind] = fn() if fn else False
         except Exception:
             _sys_support[kind] = False
     return _sys_support[kind]
-
-
-def _snap_rate(value: int, direction: int = 0) -> int:
-    rates = sorted(_available_rates())
-    if not rates:
-        return value
-    if value not in rates:
-        return min(rates, key=lambda r: abs(r - value))
-    idx = max(0, min(len(rates) - 1, rates.index(value) + direction))
-    return rates[idx]
 
 
 def _supported_field_keys(family: str, fields: list[dict]) -> set[str]:
@@ -1075,7 +1044,7 @@ def run_editor(
                     sys.stdout.flush()
                     new_val = _prompt_value(f)
                     if new_val is not None:
-                        f["value"] = _snap_rate(new_val) if f.get("rates") else new_val
+                        f["value"] = new_val
                         _enforce_clk_clamp(fields, f["key"])
                         dirty = True
                 continue
@@ -1085,8 +1054,6 @@ def run_editor(
                 if "choices" in f:
                     n = len(f["choices"])
                     f["value"] = (f["value"] - f["step"]) % n
-                elif f.get("rates"):
-                    f["value"] = _snap_rate(f["value"], -1)
                 else:
                     f["value"] = clamp_field(f["value"] - f["step"], f)
                     _enforce_clk_clamp(fields, f["key"])
@@ -1098,8 +1065,6 @@ def run_editor(
                 if "choices" in f:
                     n = len(f["choices"])
                     f["value"] = (f["value"] + f["step"]) % n
-                elif f.get("rates"):
-                    f["value"] = _snap_rate(f["value"], +1)
                 else:
                     f["value"] = clamp_field(f["value"] + f["step"], f)
                     _enforce_clk_clamp(fields, f["key"])
