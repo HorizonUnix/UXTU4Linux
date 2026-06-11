@@ -3,7 +3,7 @@ name: Feature request
 about: Suggest an idea for UXTU4Unix
 title: "[FR]"
 labels: ''
-assignees: gorouflex
+assignees: ''
 
 ---
 

@@ -4,6 +4,7 @@ about: Report a problem with UXTU4Linux
 title: "[Bug]: "
 labels: bug
 assignees: ''
+
 ---
 
 <!-- Before opening an issue, please check the Troubleshooting wiki page
@@ -31,7 +32,6 @@ and search existing issues first. -->
 - TUI / CLI
 - Custom Preset Editor
 - Automations / Override (AC/battery/resume)
-- AutoOC / Adaptive
 - Installation / setup
 
 ## Environment
