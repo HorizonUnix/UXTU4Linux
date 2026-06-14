@@ -278,7 +278,7 @@ def _daemon_status_screen(client) -> None:
             lines, refresh = _build()
             content = lines + ["", f"  {_D}Press Esc to go back{_R}"]
             clear()
-            sys.stdout.write("\n".join(content) + "\n")
+            sys.stdout.write("\n".join(content))
             sys.stdout.flush()
             if termui.get_key(timeout=refresh) == termui.ESC:
                 break

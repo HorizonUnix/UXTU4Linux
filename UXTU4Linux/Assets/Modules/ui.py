@@ -106,7 +106,7 @@ def pause(msg: str = "Press Enter to continue...") -> None:
 
 
 def _render_confirm(prompt: str, subtitle: str, selected: bool) -> list[str]:
-    yes = f"{_B}▶{_R} {_B}Yes{_R}" if selected     else f"  {_D}Yes{_R}"
+    yes = f"{_B}▶{_R} {_B}Yes{_R}" if selected else f"  {_D}Yes{_R}"
     no  = f"{_B}▶{_R} {_B}No{_R}"  if not selected else f"  {_D}No{_R}"
     lines: list[str] = []
     if subtitle:

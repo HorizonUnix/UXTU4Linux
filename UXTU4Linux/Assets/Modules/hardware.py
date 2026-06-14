@@ -547,7 +547,7 @@ def show_info() -> None:
         while True:
             content = static + _battery_lines() + ["", f"  {_D}Press Esc to go back{_R}"]
             clear()
-            sys.stdout.write("\n".join(content) + "\n")
+            sys.stdout.write("\n".join(content))
             sys.stdout.flush()
 
             key = termui.get_key(timeout=3.0)

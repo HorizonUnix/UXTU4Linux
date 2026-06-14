@@ -519,7 +519,8 @@ def _nvml_set_offsets(core_offset: int, mem_offset: int, lines: list[str]) -> No
             if rc == NVML_ERROR_NOT_SUPPORTED:
                 break
             used_modern = True
-            lines.append(f"nvidia {name}-offset -> {offset} MHz (rc={rc})")
+            suffix = "" if rc == 0 else f" (rc={rc})"
+            lines.append(f"nvidia {name}-offset -> {offset} MHz{suffix}")
 
     if not used_modern:
         setGpc = getattr(lib, "nvmlDeviceSetGpcClkVfOffset", None)
@@ -533,7 +534,8 @@ def _nvml_set_offsets(core_offset: int, mem_offset: int, lines: list[str]) -> No
         for fn, offset, name in [(setGpc, core_offset, "core"), (setMem, mem_offset, "mem")]:
             if fn:
                 rc = fn(dev, offset)
-                lines.append(f"nvidia {name}-offset -> {offset} MHz (legacy, rc={rc})")
+                suffix = "" if rc == 0 else f", rc={rc}"
+                lines.append(f"nvidia {name}-offset -> {offset} MHz (legacy{suffix})")
 
     nvmlShutdown()
 

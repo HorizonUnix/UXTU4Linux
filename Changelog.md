@@ -1,3 +1,16 @@
+## [0.8.1]
+
+A small follow-up to v0.8.0 with quality-of-life polish and fixes.
+
+### Improved
+- The `ApplyOnStart` setting now defaults to 0 (disabled).
+- **Live Daemon Status screen**: it now refreshes on its own while auto-reapply is running, so the power source, active preset and last-apply result stay up to date.
+- **Clearer NVIDIA feedback**: capping the GPU clock and setting core/VRAM offsets now report failures (including the driver's error).
+- **More reliable cache-size detection** in Hardware Information.
+
+### Internal
+- Removed unused code across the SMU, IPC and daemon modules.
+
 ## [0.8.0]
 
 Starting from v0.8.0 we rebuilt UXTU4Linux from the ground up. The old version relied on a bundled `ryzenadj` binary to do the actual work; this one talks to your CPU directly, the same way the original Universal x86 Tuning Utility does on Windows. Along the way almost every part of the app got reworked: the preset engine, the Custom Preset Editor, the background daemon, the installer, the logs and the documentation. It is the biggest release UXTU4Linux has ever had, and the closest it has ever been to the real UXTU experience on Linux.

@@ -68,10 +68,7 @@ The first run walks you through setting up the daemon and detecting your hardwar
   <img src="/Img/menu.png"/>
   <img src="/Img/power.png"/>
   <img src="/Img/power_status.png"/>
-  <img src="/Img/custom_temp.png"/>
-  <img src="/Img/custom_power.png"/>
-  <img src="/Img/custom_vrm.png"/>
-  <img src="/Img/custom_apu.png"/>
+  <img src="/Img/custom.png"/>
   <img src="/Img/automations.png"/>
   <img src="/Img/settings.png"/>
   <img src="/Img/hardware.png"/>
