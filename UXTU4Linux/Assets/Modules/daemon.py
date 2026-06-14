@@ -211,22 +211,18 @@ def _load_saved_preset() -> PresetState | None:
     user_mode = cfg.get("User", "Mode")
     automation = cfg.get("Automations", "Enabled", "0") == "1"
 
-    if user_mode == "Custom":
-        args = cfg.get("User", "CustomArgs")
+    result = _resolve_preset_args(user_mode)
+    if result:
+        _, args = result
+    elif automation:
+        args = ""
+        log.debug(
+            "Base preset '%s' not found; automation slots will manage switching.",
+            user_mode,
+        )
     else:
-        result = _resolve_preset_args(user_mode)
-        if result:
-            _, args = result
-        else:
-            if automation:
-                args = ""
-                log.debug(
-                    "Base preset '%s' not found; automation slots will manage switching.",
-                    user_mode,
-                )
-            else:
-                log.error("Preset '%s' not found — cannot apply.", user_mode)
-                return None
+        log.error("Preset '%s' not found — cannot apply.", user_mode)
+        return None
 
     reapply = cfg.get("Settings", "ReApply", "0") == "1"
     interval = cfg.parse_interval(cfg.get("Settings", "Time", "3"), default=3)

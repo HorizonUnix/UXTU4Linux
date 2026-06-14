@@ -44,12 +44,8 @@ def apply_smu(args: str, user_mode: str, *, save_to_config: bool = True) -> None
         pause()
         return
 
-    if save_to_config and user_mode != "Custom":
+    if save_to_config:
         cfg.set_config("User", "Mode", user_mode)
-        cfg.save()
-    elif save_to_config and user_mode == "Custom":
-        cfg.set_config("User", "Mode", "Custom")
-        cfg.set_config("User", "CustomArgs", args)
         cfg.save()
 
     client = get_client()
