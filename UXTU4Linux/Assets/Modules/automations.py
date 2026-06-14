@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 from . import config as cfg
 from .ui import clear, pause, menu, MenuItem, _B, _D, _G, _R, _SEP_W, _Y
 

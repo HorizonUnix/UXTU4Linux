@@ -491,8 +491,9 @@ def _nvml_set_offsets(core_offset: int, mem_offset: int, lines: list[str]) -> No
     nvmlShutdown.restype = ctypes.c_int
     nvmlGetDev.argtypes  = [ctypes.c_uint, ctypes.POINTER(ctypes.c_void_p)]
 
-    if nvmlInit() != 0:
-        lines.append("nvidia offsets -> nvmlInit failed")
+    init_rc = nvmlInit()
+    if init_rc != 0:
+        lines.append(f"nvidia offsets -> nvmlInit failed (rc={init_rc})")
         return
 
     dev = ctypes.c_void_p()
@@ -559,11 +560,19 @@ def _apply_nvidia(packed: str, lines: list[str]) -> None:
         return
 
     if max_clk >= 4000:
-        subprocess.run([smi, "-rgc"], capture_output=True)
-        lines.append("nvidia max-clock -> reset")
+        proc = subprocess.run([smi, "-rgc"], capture_output=True, text=True)
+        if proc.returncode != 0:
+            err = (proc.stderr or proc.stdout or "unknown error").strip()
+            lines.append(f"nvidia max-clock -> reset failed: {err}")
+        else:
+            lines.append("nvidia max-clock -> reset")
     else:
-        subprocess.run([smi, "-lgc", f"0,{max_clk}"], capture_output=True)
-        lines.append(f"nvidia max-clock -> {max_clk} MHz")
+        proc = subprocess.run([smi, "-lgc", f"0,{max_clk}"], capture_output=True, text=True)
+        if proc.returncode != 0:
+            err = (proc.stderr or proc.stdout or "unknown error").strip()
+            lines.append(f"nvidia max-clock -> failed to set {max_clk} MHz: {err}")
+        else:
+            lines.append(f"nvidia max-clock -> {max_clk} MHz")
 
     _nvml_set_offsets(core_offset, mem_offset, lines)
 
@@ -604,6 +613,7 @@ def apply_args(args_str: str, family: str) -> tuple[str, bool]:
             try:
                 raw = int(val_str, 0)
             except ValueError:
+                lines.append(f"{name} -> invalid value '{val_str}'")
                 continue
         else:
             name, raw = token, 0

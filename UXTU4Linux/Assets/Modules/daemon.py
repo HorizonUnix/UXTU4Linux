@@ -269,8 +269,6 @@ class PowerDaemon:
             "shutdown": self._cmd_shutdown,
             "dmidecode": self._cmd_dmidecode,
             "reload_config": self._cmd_reload_config,
-            "apply_custom_args": self._cmd_apply_custom_args,
-            "list_custom_presets": self._cmd_list_custom_presets,
         }
 
     def _cmd_reload_config(self, _msg: dict) -> dict:
@@ -648,28 +646,6 @@ class PowerDaemon:
             log.error("dmidecode failed: %s", exc)
             return {"ok": False, "error": str(exc)}
 
-    def _cmd_apply_custom_args(self, msg: dict) -> dict:
-        args = msg.get("args", "")
-        if not args:
-            return {"ok": False, "error": "empty args"}
-        try:
-            output, _ = self._apply_once(args, "Custom", reason="custom settings from the app")
-            self._last_logged_mode = "Custom"
-            return {"ok": True, "output": output}
-        except Exception as exc:
-            log.error("apply_custom_args failed: %s", exc)
-            return {"ok": False, "error": str(exc)}
-
-    def _cmd_list_custom_presets(self, _msg: dict) -> dict:
-        try:
-            from Assets.Modules.custom import get_custom_preset_names
-            names = get_custom_preset_names()
-            log.debug("list_custom_presets: %d preset(s) found.", len(names))
-            return {"ok": True, "names": names}
-        except Exception as exc:
-            log.error("list_custom_presets failed: %s", exc)
-            return {"ok": False, "error": str(exc), "names": []}
-
     def handle(self, raw: str) -> str:
         try:
             msg = json.loads(raw)
@@ -841,7 +817,7 @@ def main() -> None:
     daemon = PowerDaemon()
     on_ready = (
         (lambda: _apply_on_start(daemon))
-        if cfg.get("Settings", "ApplyOnStart", "1") == "1"
+        if cfg.get("Settings", "ApplyOnStart", "0") == "1"
         else None
     )
     if on_ready is None:

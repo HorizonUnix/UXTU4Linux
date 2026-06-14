@@ -87,15 +87,6 @@ def secure_boot_enabled() -> bool:
     return False
 
 
-def ryzen_smu_loaded() -> bool:
-    try:
-        out = subprocess.run(["lsmod"], capture_output=True, text=True, timeout=3).stdout
-        return "ryzen_smu" in out
-    except Exception:
-        pass
-    return False
-
-
 def ryzen_smu_installed() -> bool:
     try:
         return subprocess.run(
@@ -263,12 +254,14 @@ def _format_cache(size_str: str) -> str:
         return size_str
     try:
         value = float(parts[0])
-        unit = parts[1].lower().rstrip("b").rstrip("i")
-        if unit == "k":
+        unit = parts[1].lower()
+        if unit in ("k", "kb", "kib"):
             mb = value / 1024
             return f"{mb:.2f} MB" if mb < 1 else f"{mb:.0f} MB"
-        if unit == "m": return f"{value:.0f} MB"
-        if unit == "g": return f"{value * 1024:.0f} MB"
+        if unit in ("m", "mb", "mib"):
+            return f"{value:.0f} MB"
+        if unit in ("g", "gb", "gib"):
+            return f"{value * 1024:.0f} MB"
     except (ValueError, IndexError):
         pass
     return size_str

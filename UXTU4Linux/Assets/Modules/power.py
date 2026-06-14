@@ -212,56 +212,79 @@ def _select_preset_menu(presets: dict, builtin_names: list[str], custom_names: l
 
 
 def _daemon_status_screen(client) -> None:
-    clear()
-    print(f"  {_B}Daemon Status{_R}\n")
-    if not client.ping():
-        print(f"  Daemon        : {_Y}○ Not running{_R}\n")
-        print(f"  Start it with:")
-        print(f"  {_B}sudo systemctl enable --now uxtu4linux.service{_R}")
+    import sys
+    from . import termui
+
+    def _build() -> tuple[list[str], float | None]:
+        lines: list[str] = [f"  {_B}Daemon Status{_R}", ""]
+        if not client.ping():
+            lines += [
+                f"  Daemon        : {_Y}○ Not running{_R}",
+                "",
+                "  Start it with:",
+                f"  {_B}sudo systemctl enable --now uxtu4linux.service{_R}",
+            ]
+            return lines, None
+
+        s = client.status()
+        auto = s.get("automation", False)
+        loop = s.get("running_loop")
+        on_ac = s.get("on_ac")
+        mode = _dn(s.get("mode", ""))
+
+        lines.append(f"  Daemon        : {_G}● Running{_R}")
+        lines.append(f"  Power source  : {'AC' if on_ac else 'Battery'}")
+        lines.append(f"  Active preset : {mode if mode != 'none' else _D + 'none applied yet' + _R}")
+
+        if loop:
+            lines.append(f"  Auto reapply  : {_G}● ON{_R} {_D}(every {s.get('interval', '?')}s){_R}")
+        else:
+            lines.append(f"  Auto reapply  : {_Y}○ OFF{_R}")
+
+        if auto:
+            _pm_preset = _dn(cfg.get("User", "Mode", "Balance"))
+            _fallback = f"{_D}Power Management preset ({_pm_preset}){_R}"
+            ac_val = _dn(cfg.get("Automations", "OnAC", ""))
+            bat_val = _dn(cfg.get("Automations", "OnBattery", ""))
+            lines.append(f"  Automations   : {_G}● ON{_R}")
+            lines.append(f"    On AC       : {ac_val or _fallback}")
+            lines.append(f"    On Battery  : {bat_val or _fallback}")
+        else:
+            lines.append(f"  Automations   : {_Y}○ OFF{_R}")
+
+        last = s.get("last_output", "")
+        if last:
+            if s.get("last_rejected"):
+                lines.append(f"  Last apply    : {_Y}[!] some commands were rejected{_R}")
+            else:
+                lines.append(f"  Last apply    : {_G}✓ OK{_R}")
+            lines.append(f"\n  {_D}{'─' * _SEP_W}{_R}\n")
+            lines += [f"  {line}" for line in last.splitlines()]
+
+        refresh = float(cfg.parse_interval(s.get("interval", 3))) if loop else None
+        return lines, refresh
+
+    if not sys.stdin.isatty():
+        lines, _ = _build()
+        clear()
+        print("\n".join(lines) + "\n")
         pause()
         return
 
-    s = client.status()
-    auto = s.get("automation", False)
-    loop = s.get("running_loop")
-    on_ac = s.get("on_ac")
-    version = s.get("version", "")
-    mode = _dn(s.get("mode", ""))
-
-    running = f"{_G}● Running{_R}"
-    if version:
-        running += f" {_D}(v{version}){_R}"
-    print(f"  Daemon        : {running}")
-    print(f"  Power source  : {'AC' if on_ac else 'Battery'}")
-    print(f"  Active preset : {mode if mode != 'none' else _D + 'none applied yet' + _R}")
-
-    if loop:
-        print(f"  Auto reapply  : {_G}● ON{_R} {_D}(every {s.get('interval', '?')}s){_R}")
-    else:
-        print(f"  Auto reapply  : {_Y}○ OFF{_R}")
-
-    if auto:
-        _pm_preset = _dn(cfg.get("User", "Mode", "Balance"))
-        _fallback = f"{_D}Power Management preset ({_pm_preset}){_R}"
-        ac_val = _dn(cfg.get("Automations", "OnAC", ""))
-        bat_val = _dn(cfg.get("Automations", "OnBattery", ""))
-        print(f"  Automations   : {_G}● ON{_R}")
-        print(f"    On AC       : {ac_val or _fallback}")
-        print(f"    On Battery  : {bat_val or _fallback}")
-    else:
-        print(f"  Automations   : {_Y}○ OFF{_R}")
-
-    last = s.get("last_output", "")
-    if last:
-        if s.get("last_rejected"):
-            print(f"  Last apply    : {_Y}⚠ some commands were rejected{_R}")
-        else:
-            print(f"  Last apply    : {_G}✓ OK{_R}")
-        print(f"\n  {_D}{'─' * _SEP_W}{_R}\n")
-        for line in last.splitlines():
-            print(f"  {line}")
-        print()
-    pause()
+    sys.stdout.write(termui.HIDE_CURSOR)
+    sys.stdout.flush()
+    try:
+        while True:
+            lines, refresh = _build()
+            content = lines + ["", f"  {_D}Press Esc to go back{_R}"]
+            clear()
+            sys.stdout.write("\n".join(content) + "\n")
+            sys.stdout.flush()
+            if termui.get_key(timeout=refresh) == termui.ESC:
+                break
+    finally:
+        sys.stdout.write(termui.SHOW_CURSOR)
+        sys.stdout.flush()
 
 
 def _stop_loop_screen(state: PowerState, client) -> PowerState:

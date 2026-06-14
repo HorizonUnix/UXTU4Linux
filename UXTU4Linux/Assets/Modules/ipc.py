@@ -82,9 +82,6 @@ class DaemonClient:
         return self._send({"cmd": "apply_saved"}) \
             or {"ok": False, "error": "daemon not responding"}
 
-    def shutdown(self) -> dict:
-        return self._send({"cmd": "shutdown"}) or {"ok": False}
-
     def dmidecode(self, dmi_type: str) -> str:
         r = self._send({"cmd": "dmidecode", "type": dmi_type})
         if r and r.get("ok"):
@@ -93,16 +90,6 @@ class DaemonClient:
 
     def reload_config(self) -> dict:
         return self._send({"cmd": "reload_config"}) or {"ok": False}
-
-    def apply_custom_args(self, args: str) -> dict:
-        return self._send({"cmd": "apply_custom_args", "args": args}) \
-            or {"ok": False, "error": "daemon not responding"}
-
-    def list_custom_presets(self) -> list[str]:
-        r = self._send({"cmd": "list_custom_presets"})
-        if r and r.get("ok"):
-            return r.get("names", [])
-        return []
 
 
 _client: DaemonClient | None = None

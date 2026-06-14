@@ -390,8 +390,6 @@ DT_SECTION_TITLES = {
 
 APU_PER_CORE_SECTION = 6
 DT_PER_CORE_SECTION = 4
-APU_PER_CORE_KEYS = [f"co_ccd1_core{i + 1}" for i in range(12)] + [f"co_ccd2_core{i + 1}" for i in range(12)]
-DT_PER_CORE_KEYS = [f"co_ccd1_core{i + 1}" for i in range(8)] + [f"co_ccd2_core{i + 1}" for i in range(8)]
 
 _CLK_PAIRS = [
     ("min_gfxclk", "max_gfxclk"),
@@ -868,7 +866,6 @@ def _prompt_value(f: dict) -> int | None:
         return clamp_field(int(raw.strip()), f)
     except (ValueError, TypeError):
         return None
-
 
 
 def _do_save(fields: list[dict], preset_name: str) -> tuple[str, bool]:

@@ -91,7 +91,7 @@ def _redetect_hardware() -> None:
 
     if not get_client().ping():
         clear()
-        print(f"  {_Y}⚠ Daemon is not running.{_R}\n")
+        print(f"  {_Y}[!] Daemon is not running.{_R}\n")
         print("  Hardware detection requires the daemon to be active.")
         print("  Start or reinstall the daemon from the daemon menu first.\n")
         pause()

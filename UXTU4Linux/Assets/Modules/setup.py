@@ -18,7 +18,7 @@ def _apply_defaults() -> None:
         ("Settings", "Time"): "3",
         ("Settings", "SoftwareUpdate"): "1",
         ("Settings", "ReApply"): "0",
-        ("Settings", "ApplyOnStart"): "1",
+        ("Settings", "ApplyOnStart"): "0    ",
         ("Settings", "Debug"): "0",
         ("Automations", "Enabled"): "0",
         ("Automations", "OnAC"): "",
@@ -108,7 +108,7 @@ def _step_daemon_systemd(step: int, total: int) -> bool:
         if ok:
             print(f"\n  {_G}✓ Daemon is running.{_R}")
         else:
-            print(f"\n  {_Y}⚠ Daemon did not start. Check logs:{_R}")
+            print(f"\n  {_Y}[!] Daemon did not start. Check logs:{_R}")
             print(f"    {_D}journalctl -u uxtu4linux.service -n 20 --no-pager{_R}")
         pause()
         if ok:
@@ -192,7 +192,7 @@ def _step_hardware(step: int, total: int) -> bool:
         from .ipc import get_client
         if not get_client().ping():
             clear()
-            print(f"  {_Y}⚠ Daemon is not running.{_R}\n")
+            print(f"  {_Y}[!] Daemon is not running.{_R}\n")
             print("  Hardware detection requires the daemon to be active.")
             print("  Go back and complete the daemon setup step first.\n")
             pause()
@@ -293,7 +293,7 @@ def run_welcome() -> None:
 
 _CFG_DEFAULTS: dict[str, dict[str, str]] = {
     "User": {"mode": "Balance"},
-    "Settings": {"time": "3", "reapply": "0", "applyonstart": "1", "softwareupdate": "1", "debug": "0"},
+    "Settings": {"time": "3", "reapply": "0", "applyonstart": "0", "softwareupdate": "1", "debug": "0"},
     "Automations": {"enabled": "0", "onac": "", "onbattery": "", "onresume": ""},
 }
 

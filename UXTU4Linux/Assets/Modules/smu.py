@@ -7,12 +7,7 @@ import time
 
 DRIVER_PATH   = "/sys/kernel/ryzen_smu_drv"
 SMN_PATH      = DRIVER_PATH + "/smn"
-CODENAME_PATH = DRIVER_PATH + "/codename"
 VERSION_PATH  = DRIVER_PATH + "/drv_version"
-PM_TABLE_PATH = DRIVER_PATH + "/pm_table"
-RSMU_CMD      = DRIVER_PATH + "/rsmu_cmd"
-MP1_CMD       = DRIVER_PATH + "/mp1_smu_cmd"
-SMU_ARGS      = DRIVER_PATH + "/smu_args"
 
 MIN_VERSION = (0, 1, 7)
 
@@ -98,22 +93,12 @@ def _smn_send(fd: int, msg_addr: int, rsp_addr: int, args_addr: int,
     return SMU_FAILED
 
 
-
 def is_available() -> bool:
     return os.path.isdir(DRIVER_PATH)
 
 
 def has_smn() -> bool:
     return os.path.exists(SMN_PATH)
-
-
-
-def get_codename() -> int | None:
-    try:
-        with open(CODENAME_PATH) as f:
-            return int(f.read().strip())
-    except (OSError, ValueError):
-        return None
 
 
 def get_version() -> str:
@@ -168,19 +153,6 @@ def send_rsmu(family: str, op: int, arg0: int = 0) -> int:
             os.close(fd)
     except OSError:
         return SMU_FAILED
-
-
-
-def has_pm_table() -> bool:
-    return os.path.exists(PM_TABLE_PATH)
-
-
-def read_pm_table() -> bytes:
-    try:
-        with open(PM_TABLE_PATH, "rb") as f:
-            return f.read()
-    except OSError:
-        return b""
 
 
 def status_name(code: int) -> str:
