@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-import copy
 import json
-import sys
+import re
 from typing import Any
 
-from . import config as cfg
-from . import termui
-from .ui import _R, _B, _D, _Y, _G, _SEP_W, _wrap
+from Assets.core import config as cfg
 
 FIELD_DEFS: list[dict[str, Any]] = [
     {
@@ -279,14 +276,14 @@ SYS_SECTION = 11
 
 _OC_FIELDS: list[dict[str, Any]] = [
     {
-        "key": "oc_clk", "label": "CPU Clocks (MHz)", "arg": "--oc-clk",
+        "key": "oc_clk", "label": "CPU Clocks", "arg": "--oc-clk",
         "unit": "MHz", "default": 3200, "min": 400, "max": 8000, "step": 25,
         "enabled": False, "section": OC_SECTION,
         "hint": "Provides the ability to set a static CPU clock",
     },
     {
-        "key": "oc_volt", "label": "CPU VID (mV)", "arg": "--oc-volt",
-        "unit": "", "default": 1200, "min": 512, "max": 1450, "step": 25,
+        "key": "oc_volt", "label": "CPU VID", "arg": "--oc-volt",
+        "unit": "mV", "default": 1200, "min": 512, "max": 1450, "step": 25,
         "enabled": False, "section": OC_SECTION,
         "hint": "Controls the set voltage for the CPU",
     },
@@ -365,26 +362,26 @@ for _sf in _SYS_FIELDS:
 
 APU_SECTION_NAMES = {1: "Temp", 2: "Power", 3: "VRM", 4: "iGPU", 5: "CO", 6: "CO Per-Core", 7: "Clocks", OC_SECTION: "CPU Tuning", NV_SECTION: "NV GPU", SYS_SECTION: "System"}
 APU_SECTION_TITLES = {
-    1: "APU Temperature",
-    2: "APU Power Limits",
-    3: "APU VRM Limits",
-    4: "iGPU Clock Limits",
-    5: "Curve Optimiser",
-    6: "Curve Optimiser Per-Core",
-    7: "Soft Clock Limits",
-    OC_SECTION: "CPU Tuning",
-    NV_SECTION: "NVIDIA GPU",
+    1: "APU Temperature Tuning",
+    2: "APU Power Tuning",
+    3: "APU VRM Tuning",
+    4: "iGPU Tuning",
+    5: "AMD Curve Optimiser",
+    6: "AMD Per-Core Curve Optimiser",
+    7: "APU Soft Clock Limit Tuning",
+    OC_SECTION: "AMD Ryzen CPU Tuning",
+    NV_SECTION: "NVIDIA GPU Tuning",
     SYS_SECTION: "System",
 }
 
 DT_SECTION_NAMES = {1: "Thermal", 2: "Power", 3: "PBO/CO", 4: "CO Per-Core", OC_SECTION: "OC", NV_SECTION: "NV GPU", SYS_SECTION: "System"}
 DT_SECTION_TITLES = {
-    1: "CPU Thermal",
-    2: "CPU Power Limits",
-    3: "PBO & Curve Optimiser",
-    4: "Curve Optimiser Per-Core",
-    OC_SECTION: "CPU Tuning",
-    NV_SECTION: "NVIDIA GPU",
+    1: "CPU Temperature Tuning",
+    2: "CPU Power Tuning",
+    3: "AMD Precision Boost Overdrive",
+    4: "AMD Per-Core Curve Optimiser",
+    OC_SECTION: "AMD Ryzen CPU Tuning",
+    NV_SECTION: "NVIDIA GPU Tuning",
     SYS_SECTION: "System",
 }
 
@@ -443,7 +440,7 @@ _sys_support: dict[str, bool] = {}
 def _system_supported(kind: str) -> bool:
     if kind not in _sys_support:
         try:
-            from . import platformctl
+            from Assets.system import platformctl
             checks = {
                 "power_profile": platformctl.power_profile_available,
                 "asus": platformctl.asus_available,
@@ -459,7 +456,7 @@ def _system_supported(kind: str) -> bool:
 
 
 def _supported_field_keys(family: str, fields: list[dict]) -> set[str]:
-    from . import runner
+    from Assets.engine import runner
     nv = has_nvidia()
     supported = set()
     for f in fields:
@@ -639,11 +636,8 @@ def _save_custom_presets(presets: list[dict]) -> None:
     try:
         cfg.CUSTOM_PRESETS_PATH.parent.mkdir(parents=True, exist_ok=True)
         cfg.atomic_write(str(cfg.CUSTOM_PRESETS_PATH), json.dumps(presets, indent=2))
-    except OSError as e:
-        from .ui import clear, pause
-        clear()
-        print(f"  Failed to save presets: {e}")
-        pause()
+    except OSError:
+        pass
 
 
 def fields_to_record(base_name: str, fields: list[dict]) -> dict:
@@ -685,11 +679,44 @@ def get_custom_preset_names() -> list[str]:
     return [p["name"] + "_custom_preset" for p in load_custom_presets()]
 
 
-def save_preset(base_name: str, fields: list[dict]) -> str:
-    presets = load_custom_presets()
-    presets = [p for p in presets if p["name"] != base_name]
+def unique_preset_name(source_name: str) -> str:
+    existing = {p["name"] for p in load_custom_presets()}
+    root = re.sub(r"\s+Copy(\s+\d+)?$", "", source_name.strip()) or "Custom"
+    candidate = f"{root} Copy"
+    n = 2
+    while candidate in existing:
+        candidate = f"{root} Copy {n}"
+        n += 1
+    return candidate
+
+
+def _migrate_preset_refs(old_base: str, new_base: str) -> None:
+    old_names = (old_base, old_base + "_custom_preset")
+    changed = False
+    if cfg.get("User", "Mode") in old_names:
+        cfg.set_config("User", "Mode", new_base)
+        changed = True
+    for slot in ("OnAC", "OnBattery"):
+        if cfg.get("Automations", slot, "") in old_names:
+            cfg.set_config("Automations", slot, new_base + "_custom_preset")
+            changed = True
+    if changed:
+        cfg.save()
+
+
+def save_preset(base_name: str, fields: list[dict], replace_name: str | None = None) -> str:
+    base_name = base_name.removesuffix("_custom_preset")
+    drop = {base_name}
+    old_base = replace_name.removesuffix("_custom_preset") if replace_name else ""
+    if old_base:
+        drop.add(old_base)
+
+    presets = [p for p in load_custom_presets() if p["name"] not in drop]
     presets.append(fields_to_record(base_name, fields))
     _save_custom_presets(presets)
+
+    if old_base and old_base != base_name:
+        _migrate_preset_refs(old_base, base_name)
 
     internal_name = base_name + "_custom_preset"
     active_mode = cfg.get("User", "Mode")
@@ -702,7 +729,7 @@ def save_preset(base_name: str, fields: list[dict]) -> str:
     )
     if in_use:
         try:
-            from .ipc import get_client
+            from Assets.core.ipc import get_client
             client = get_client()
             if client.ping():
                 client.apply_saved()
@@ -721,7 +748,7 @@ def delete_preset(display_name: str) -> None:
     changed = False
 
     if cfg.get("User", "Mode") in (internal_name, base):
-        cfg.set_config("User", "Mode", "Balance")
+        cfg.set_config("User", "Mode", "")
         changed = True
 
     ac_slot = cfg.get("Automations", "OnAC", "")
@@ -744,7 +771,7 @@ def delete_preset(display_name: str) -> None:
     if changed:
         cfg.save()
         try:
-            from .ipc import get_client
+            from Assets.core.ipc import get_client
             client = get_client()
             if client.ping():
                 client.apply_saved()
@@ -759,415 +786,3 @@ def load_preset_fields(display_name: str, cpu_type: str = "") -> list[dict] | No
         if p.get("name") == base:
             return record_to_fields(p, cpu_type)
     return None
-
-
-def _render_editor(
-    fields: list[dict],
-    sections: dict[int, str],
-    section_titles: dict[int, str],
-    section: int,
-    row: int,
-    dirty: bool,
-    preset_name: str,
-    supported_keys: set[str] | None = None,
-) -> list[str]:
-    name_display = preset_name or "(unnamed)"
-    dirty_mark = f"  {_Y}[*]{_R}" if dirty else ""
-    lines: list[str] = [
-        f"  {_B}Custom Preset Editor{_R}",
-        f"  Name: {_B}{name_display}{_R}{dirty_mark}",
-        "",
-    ]
-
-    sec_list = sorted(sections.keys())
-    n = len(sec_list)
-    mid = (n + 1) // 2
-    chunks = [sec_list[:mid], sec_list[mid:]] if n > 4 else [sec_list]
-    for chunk in chunks:
-        if not chunk:
-            continue
-        base = sec_list.index(chunk[0])
-        tab_line = "  "
-        for idx, s in enumerate(chunk, base + 1):
-            if s == section:
-                tab_line += f"{_B}[{idx}] {sections[s]}{_R}  "
-            else:
-                tab_line += f"{_D}[{idx}] {sections[s]}{_R}  "
-        lines.append(tab_line.rstrip())
-
-    lines.append(f"  {_D}{'─' * _SEP_W}{_R}")
-    lines.append(f"  {_B}{section_titles.get(section, '')}{_R}")
-    lines.append("")
-
-    sec_rows = _section_indices(fields, section, supported_keys)
-    active_hint = ""
-    for r, gi in enumerate(sec_rows):
-        f = fields[gi]
-        tog = f"{_G}[✓]{_R}" if f["enabled"] else f"{_D}[ ]{_R}"
-        lbl = f"{f['label']:<22}"
-        if "choices" in f:
-            vstr = f"{f['choices'][f['value']]:^10}"
-            rng = ""
-        else:
-            vstr = f"{f['value']:>5} {f['unit']:<4}"
-            rng = f"[{f['min']} – {f['max']}]"
-        if r == row:
-            active_hint = f.get("hint", "")
-            lines.append(f"  {_B}▶{_R} {tog} {_B}{lbl}{_R}  {_B}{vstr}{_R}  {_D}{rng}{_R}")
-        else:
-            if f["enabled"]:
-                lines.append(f"    {tog} {lbl}  {_D}{vstr}  {rng}{_R}")
-            else:
-                lines.append(f"    {tog} {_D}{lbl}  {vstr}  {rng}{_R}")
-
-    lines.append("")
-    if active_hint:
-        for hl in _wrap(active_hint, _SEP_W - 2):
-            lines.append(f"  {_D}{hl}{_R}")
-    lines += [
-        f"  {_D}{'─' * _SEP_W}{_R}",
-        f"  {_D}[S] Save  [L] Load  [D] Delete  [R] Rename{_R}",
-        f"  {_D}Space to toggle, ←/→ to step, Enter to type value{_R}",
-        f"  {_D}Backspace to reset, Tab to switch section, Esc to go back{_R}",
-    ]
-    return lines
-
-
-_MAX_NAME = _SEP_W - 8
-
-
-def _prompt_name(current: str) -> str | None:
-    from .ui import ask, clear
-    clear()
-    print(f"  {_B}Preset Name{_R}\n")
-    print(f"  {_D}Max {_MAX_NAME} characters{_R}\n")
-    name = ask("Preset name", default=current)
-    return name.strip()[:_MAX_NAME] or None
-
-
-def _confirm_overwrite(name: str) -> bool:
-    from .ui import menu, MenuItem
-    items = [
-        MenuItem("Yes, overwrite", key="yes"),
-        MenuItem("No, cancel",     key="no"),
-    ]
-    choice = menu(f"Overwrite '{name}'?", items)
-    return choice != -1 and items[choice].key == "yes"
-
-
-def _prompt_value(f: dict) -> int | None:
-    from .ui import clear, ask
-    clear()
-    unit_str = f" {f['unit']}" if f.get("unit") else ""
-    print(f"  {_B}{f['label']}{_R}\n")
-    print(f"  {_D}Range: {f['min']} – {f['max']}{unit_str}{_R}\n")
-    raw = ask("Value", default=str(f["value"]))
-    try:
-        return clamp_field(int(raw.strip()), f)
-    except (ValueError, TypeError):
-        return None
-
-
-def _do_save(fields: list[dict], preset_name: str) -> tuple[str, bool]:
-    if not any(f["enabled"] for f in fields):
-        from .ui import clear, pause
-        clear()
-        print("  Cannot save — no parameters are enabled.")
-        print("  Enable at least one parameter with Space before saving.")
-        pause()
-        return preset_name, False
-
-    name = preset_name or ""
-    if not name:
-        name = _prompt_name("") or ""
-        if not name:
-            return preset_name, False
-
-    existing = [p["name"] for p in load_custom_presets()]
-    if name in existing and not _confirm_overwrite(name):
-        return name, False
-
-    save_preset(name, fields)
-    return name, True
-
-
-def _do_load(fields: list[dict], dirty: bool, cpu_type: str) -> tuple[list[dict], str, bool] | None:
-    names = get_custom_preset_names()
-    if not names:
-        from .ui import clear, pause
-        clear()
-        print("  No saved custom presets.")
-        pause()
-        return None
-
-    if dirty:
-        from .ui import confirm
-        if not confirm("Discard unsaved changes and load another preset?"):
-            return None
-
-    choice = _arrow_pick("Load Preset", names)
-    if choice is None:
-        return None
-
-    loaded = load_preset_fields(choice, cpu_type)
-    if loaded is None:
-        return None
-
-    base_name = choice.removesuffix("_custom_preset")
-    return loaded, base_name, False
-
-
-def _do_delete() -> str | None:
-    names = get_custom_preset_names()
-    if not names:
-        from .ui import clear, pause
-        clear()
-        print("  No saved custom presets.")
-        pause()
-        return None
-
-    choice = _arrow_pick("Delete Preset", names)
-    if choice is not None:
-        from .ui import confirm
-        if confirm(f"Delete '{_display_name(choice)}'? This cannot be undone"):
-            delete_preset(choice)
-            return choice
-    return None
-
-
-def _arrow_pick(title: str, names: list[str]) -> str | None:
-    from .ui import menu, MenuItem
-    items = [MenuItem(_display_name(n), key=n) for n in names]
-    items += [MenuItem("─", kind="separator"), MenuItem("Back", key="back")]
-    choice = menu(title, items)
-    if choice == -1 or items[choice].key == "back":
-        return None
-    return items[choice].key
-
-
-def run_editor(
-    initial_fields: list[dict] | None = None,
-    initial_name: str = "",
-    cpu_type: str = "",
-) -> None:
-    if not cpu_type:
-        cpu_type = cfg.get("Info", "Type")
-
-    if cpu_type == "Amd_Desktop_Cpu":
-        all_sections = DT_SECTION_NAMES
-        section_titles = DT_SECTION_TITLES
-        default_fn = lambda: default_dt_fields(include_ccd2=_supports_ccd2_dt())
-    else:
-        all_sections = APU_SECTION_NAMES
-        section_titles = APU_SECTION_TITLES
-        default_fn = lambda: default_fields(include_ccd2=_supports_ccd2_apu())
-
-    family = cfg.get("Info", "Family")
-    fields = copy.deepcopy(initial_fields) if initial_fields else default_fn()
-
-    def _recompute_support() -> tuple[set[str], dict[int, str]]:
-        sk = _supported_field_keys(family, fields)
-        act = _active_sections(all_sections, fields, sk)
-        return sk, act
-
-    supported_keys, sections = _recompute_support()
-    preset_name = initial_name
-    section = min(sections.keys()) if sections else min(all_sections.keys())
-    row = 0
-    dirty = False
-
-    def clamp_row() -> None:
-        nonlocal row
-        n = len(_section_indices(fields, section, supported_keys))
-        row = max(0, min(row, n - 1)) if n else 0
-
-    try:
-        while True:
-            clamp_row()
-            from .ui import clear as ui_clear
-            ui_clear()
-            lines = _render_editor(
-                fields, sections, section_titles, section, row, dirty,
-                preset_name, supported_keys,
-            )
-            sys.stdout.write(termui.HIDE_CURSOR + "\n".join(lines) + "\n")
-            sys.stdout.flush()
-            key = termui.get_key()
-
-            if len(key) == 1 and 0x31 <= key[0] <= 0x39:
-                idx = key[0] - 0x31
-                sec_list = sorted(sections.keys())
-                if idx < len(sec_list):
-                    new_sec = sec_list[idx]
-                    if new_sec != section:
-                        section = new_sec
-                        row = 0
-                continue
-
-            sec_rows = _section_indices(fields, section, supported_keys)
-
-            if key == termui.UP:
-                if row > 0:
-                    row -= 1
-                continue
-
-            if key == termui.DOWN:
-                if row < len(sec_rows) - 1:
-                    row += 1
-                continue
-
-            if key == b"\t":
-                sec_list = sorted(sections.keys())
-                if sec_list:
-                    idx = sec_list.index(section) if section in sec_list else 0
-                    section = sec_list[(idx + 1) % len(sec_list)]
-                    row = 0
-                continue
-
-            if key == b" " and sec_rows:
-                f = fields[sec_rows[row]]
-                f["enabled"] = not f["enabled"]
-                dirty = True
-                continue
-
-            if key == termui.ENTER and sec_rows:
-                f = fields[sec_rows[row]]
-                if "choices" in f:
-                    n = len(f["choices"])
-                    f["value"] = (f["value"] + f["step"]) % n
-                    dirty = True
-                else:
-                    sys.stdout.write(termui.SHOW_CURSOR)
-                    sys.stdout.flush()
-                    new_val = _prompt_value(f)
-                    if new_val is not None:
-                        f["value"] = new_val
-                        _enforce_clk_clamp(fields, f["key"])
-                        dirty = True
-                continue
-
-            if key == termui.LEFT and sec_rows:
-                f = fields[sec_rows[row]]
-                if "choices" in f:
-                    n = len(f["choices"])
-                    f["value"] = (f["value"] - f["step"]) % n
-                else:
-                    f["value"] = clamp_field(f["value"] - f["step"], f)
-                    _enforce_clk_clamp(fields, f["key"])
-                dirty = True
-                continue
-
-            if key == termui.RIGHT and sec_rows:
-                f = fields[sec_rows[row]]
-                if "choices" in f:
-                    n = len(f["choices"])
-                    f["value"] = (f["value"] + f["step"]) % n
-                else:
-                    f["value"] = clamp_field(f["value"] + f["step"], f)
-                    _enforce_clk_clamp(fields, f["key"])
-                dirty = True
-                continue
-
-            if key in (b"\x7f", b"\x08") and sec_rows:
-                f = fields[sec_rows[row]]
-                f["value"] = f["default"]
-                f["enabled"] = False
-                _enforce_clk_clamp(fields, f["key"])
-                dirty = True
-                continue
-
-            if key in (b"s", b"S"):
-                sys.stdout.write(termui.SHOW_CURSOR)
-                sys.stdout.flush()
-                preset_name, saved = _do_save(fields, preset_name)
-                if saved:
-                    dirty = False
-                continue
-
-            if key in (b"l", b"L"):
-                sys.stdout.write(termui.SHOW_CURSOR)
-                sys.stdout.flush()
-                result = _do_load(fields, dirty, cpu_type)
-                if result is not None:
-                    fields, preset_name, dirty = result
-                    supported_keys, sections = _recompute_support()
-                    if section not in sections:
-                        section = min(sections.keys()) if sections else min(all_sections.keys())
-                        row = 0
-                continue
-
-            if key in (b"d", b"D"):
-                sys.stdout.write(termui.SHOW_CURSOR)
-                sys.stdout.flush()
-                deleted = _do_delete()
-                if deleted and deleted.removesuffix("_custom_preset") == preset_name:
-                    preset_name = ""
-                    fields = default_fn()
-                    supported_keys, sections = _recompute_support()
-                    section = min(sections.keys()) if sections else min(all_sections.keys())
-                    row = 0
-                    dirty = False
-                continue
-
-            if key in (b"r", b"R"):
-                sys.stdout.write(termui.SHOW_CURSOR)
-                sys.stdout.flush()
-                new_name = _prompt_name(preset_name or "")
-                if new_name and new_name != preset_name:
-                    preset_name = new_name
-                    dirty = True
-                continue
-
-            if key == termui.ESC:
-                if dirty:
-                    sys.stdout.write(termui.SHOW_CURSOR)
-                    sys.stdout.flush()
-                    from .ui import confirm
-                    ok = confirm("Discard unsaved changes?")
-                    if not ok:
-                        continue
-                break
-
-            if key in (b"\x03", b"\x04"):
-                break
-
-    finally:
-        sys.stdout.write(termui.SHOW_CURSOR + "\n")
-        sys.stdout.flush()
-
-
-def custom_preset_menu() -> None:
-    from .ui import clear, pause, menu, MenuItem
-
-    cpu_type = cfg.get("Info", "Type")
-    if cpu_type not in ("Amd_Apu", "Amd_Desktop_Cpu"):
-        clear()
-        print("  Custom Preset editor is only supported on AMD APUs and Desktop CPUs.")
-        pause()
-        return
-
-    saved = load_custom_presets()
-    if saved:
-        names = get_custom_preset_names()
-        items = [MenuItem(_display_name(n), key=n) for n in names]
-        items += [
-            MenuItem("─", kind="separator"),
-            MenuItem("Create new preset", key="new"),
-            MenuItem("Back", key="back"),
-        ]
-        choice = menu("Custom Preset", items)
-        if choice == -1 or items[choice].key == "back":
-            return
-        if items[choice].key == "new":
-            fields = _default_fields_for_current_cpu()
-            name = ""
-        else:
-            selected = items[choice].key
-            fields = load_preset_fields(selected, cpu_type) or _default_fields_for_current_cpu()
-            name = selected.removesuffix("_custom_preset")
-    else:
-        fields = _default_fields_for_current_cpu()
-        name = ""
-
-    clear()
-    run_editor(initial_fields=fields, initial_name=name, cpu_type=cpu_type)

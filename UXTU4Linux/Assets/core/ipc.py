@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
 import zmq
 
-from . import config as cfg
+from Assets.core import config as cfg
 
 
 class DaemonClient:
-    TIMEOUT_MS = 5_000
+    TIMEOUT_MS = 2_000
 
     def __init__(self, addr: str = cfg.ZMQ_SOCKET_ADDR) -> None:
         self._addr = addr
@@ -36,6 +37,9 @@ class DaemonClient:
 
     def _send(self, cmd: dict) -> dict | None:
         with self._lock:
+            if not os.path.exists(cfg.ZMQ_SOCKET_PATH):
+                self._reset_sock()
+                return None
             try:
                 sock = self._get_sock()
                 sock.send_string(json.dumps(cmd))
@@ -90,6 +94,9 @@ class DaemonClient:
 
     def reload_config(self) -> dict:
         return self._send({"cmd": "reload_config"}) or {"ok": False}
+
+    def reset_state(self) -> dict:
+        return self._send({"cmd": "reset_state"}) or {"ok": False}
 
 
 _client: DaemonClient | None = None

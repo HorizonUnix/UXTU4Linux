@@ -246,8 +246,8 @@ setup_venv() {
         "$VENV_PYTHON" -m pip install --quiet --no-cache-dir -r "$SRC_DIR/requirements.txt" &>/dev/null \
             || die "Failed to install Python requirements."
     else
-        "$VENV_PYTHON" -m pip install --quiet --no-cache-dir pyzmq &>/dev/null \
-            || die "Failed to install pyzmq."
+        "$VENV_PYTHON" -m pip install --quiet --no-cache-dir pyzmq textual &>/dev/null \
+            || die "Failed to install pyzmq, textual."
     fi
     ok "Python environment ready."
 }
@@ -281,9 +281,7 @@ restart_daemon() {
         || warn "Could not restart daemon — run: sudo systemctl status $SERVICE_NAME"
 }
 
-print_banner() {
-    local tag="$1"
-    clear
+print_logo() {
     echo ""
     echo -e "${_B}+----------------------------------------------------------+"
     echo -e "|  _   ___  _______ _   _ _  _   _     _                   |"
@@ -293,11 +291,69 @@ print_banner() {
     echo -e "|  \___//_/\_\ |_|  \___/   |_| |_____|_|_| |_|\__,_/_/\_\ |"
     echo -e "+----------------------------------------------------------+${_R}"
     echo ""
+}
+
+print_banner() {
+    local tag="$1"
+    clear
+    print_logo
     echo -e "  ${_D}Installer  ·  ${tag}${_R}"
     hr
     echo -e "  ${_D}Install  : $INSTALL_DIR${_R}"
     echo -e "  ${_D}Source   : $SRC_DIR${_R}"
     echo -e "  ${_D}Launcher : $BIN_WRAPPER${_R}"
+    hr
+    echo ""
+}
+
+uninstall() {
+    clear
+    print_logo
+    echo -e "  ${_D}Uninstaller${_R}"
+    hr
+    echo ""
+    warn "This will completely remove UXTU4Linux:"
+    info "Service  : $SERVICE_FILE"
+    info "Launcher : $BIN_WRAPPER"
+    info "Files    : $INSTALL_DIR"
+    echo ""
+    read -rp "  Continue? [y/N] " reply
+    [[ "$reply" =~ ^[Yy]$ ]] || { echo ""; info "Cancelled."; echo ""; exit 0; }
+    echo ""
+    hr
+    echo ""
+
+    if command -v systemctl &>/dev/null && [[ -f "$SERVICE_FILE" ]]; then
+        info "Removing daemon service..."
+        sudo systemctl stop "$SERVICE_NAME" 2>/dev/null || true
+        sudo systemctl disable "$SERVICE_NAME" 2>/dev/null || true
+        sudo rm -f "$SERVICE_FILE"
+        sudo systemctl daemon-reload 2>/dev/null || true
+        ok "Daemon service removed."
+    else
+        info "No daemon service to remove."
+    fi
+
+    if [[ -e "$BIN_WRAPPER" ]]; then
+        sudo rm -f "$BIN_WRAPPER"
+        ok "Launcher removed: $BIN_WRAPPER"
+    else
+        info "No launcher to remove."
+    fi
+
+    if [[ -d "$INSTALL_DIR" ]]; then
+        sudo rm -rf "$INSTALL_DIR"
+        ok "Files removed: $INSTALL_DIR"
+    else
+        info "No installation files to remove."
+    fi
+
+    sudo rm -f /run/uxtu4linux.sock /run/uxtu4linux_daemon.lock 2>/dev/null || true
+    rm -f /tmp/uxtu4linux_tui.lock 2>/dev/null || true
+
+    echo ""
+    hr
+    ok "UXTU4Linux has been uninstalled."
     hr
     echo ""
 }
@@ -321,6 +377,19 @@ run_setup() {
 }
 
 main() {
+    case "${1:-}" in
+        --uninstall|-u)
+            uninstall
+            return
+            ;;
+        --help|-h)
+            echo "Usage: bash install.sh [--uninstall]"
+            echo "  (no args)      Install or update UXTU4Linux."
+            echo "  --uninstall    Remove UXTU4Linux (service, launcher, and files)."
+            return
+            ;;
+    esac
+
     local tag
     tag="$(resolve_release_tag)"
     print_banner "$tag"

@@ -19,7 +19,7 @@ _ROOT = os.path.dirname(os.path.dirname(_HERE))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-from Assets.Modules import config as cfg
+from Assets.core import config as cfg
 
 cfg.load()
 
@@ -119,7 +119,7 @@ def _on_ac() -> bool:
 
 
 def _load_builtin_presets() -> dict:
-    from Assets.Modules.power import get_presets
+    from Assets.tuning.power import get_presets
     return get_presets()
 
 
@@ -130,7 +130,7 @@ def _resolve_preset_args(preset_name: str) -> tuple[str, str] | None:
 
     base = preset_name.removesuffix("_custom_preset")
     try:
-        from Assets.Modules.custom import load_custom_presets, preset_to_args
+        from Assets.tuning.custom import load_custom_presets, preset_to_args
         for p in load_custom_presets():
             if p["name"] == base:
                 return preset_name, preset_to_args(p)
@@ -156,7 +156,7 @@ _smu_blocked_warned = False
 
 
 def _smu_blocked() -> str | None:
-    from Assets.Modules import smu
+    from Assets.amd import smu
     if not smu.is_available():
         return "ryzen_smu is not available"
     if not smu.version_ok():
@@ -182,7 +182,7 @@ def _apply_via_smu(args: str, mode: str) -> tuple[str, bool]:
         _smu_blocked_warned = False
         log.info("ryzen_smu is available again — presets can be applied.")
     try:
-        from Assets.Modules import runner
+        from Assets.engine import runner
         output, rejected = runner.apply_args(args, family)
         if rejected:
             log.warning(
@@ -265,6 +265,7 @@ class PowerDaemon:
             "shutdown": self._cmd_shutdown,
             "dmidecode": self._cmd_dmidecode,
             "reload_config": self._cmd_reload_config,
+            "reset_state": self._cmd_reset_state,
         }
 
     def _cmd_reload_config(self, _msg: dict) -> dict:
@@ -272,6 +273,23 @@ class PowerDaemon:
         debug = cfg.is_debug()
         logging.getLogger().setLevel(logging.DEBUG if debug else logging.INFO)
         log.info("Config reloaded (debug=%s)", debug)
+        return {"ok": True}
+
+    def _cmd_reset_state(self, _msg: dict) -> dict:
+        self._stop_loop()
+        self._stop_monitor()
+        with self._lock:
+            self._mode = ""
+            self._args = ""
+            self._automation = False
+            self._interval = 3
+            self._running_loop = False
+            self._last_output = ""
+            self._last_rejected = False
+        self._last_logged_mode = ""
+        cfg.load()
+        logging.getLogger().setLevel(logging.DEBUG if cfg.is_debug() else logging.INFO)
+        log.info("Daemon state reset to defaults.")
         return {"ok": True}
 
     def _effective_mode_args(
@@ -527,7 +545,7 @@ class PowerDaemon:
         on_ac = _on_ac()
         eff_mode, eff_args = self._effective_mode_args(mode, args, automation, on_ac)
         try:
-            self._apply_once(eff_args, eff_mode, reason="starting auto-reapply")
+            output, rejected = self._apply_once(eff_args, eff_mode, reason="starting auto-reapply")
             self._last_logged_mode = eff_mode
         except Exception as exc:
             with self._lock:
@@ -552,7 +570,7 @@ class PowerDaemon:
             name="uxtu-reapply",
         )
         self._loop_thread.start()
-        return {"ok": True}
+        return {"ok": True, "output": output, "rejected": rejected}
 
     def _cmd_stop_loop(self, _msg: dict) -> dict:
         self._stop_loop()
@@ -774,8 +792,8 @@ def main() -> None:
     if cfg.get("Info", "Type") == "Intel":
         log.warning("Intel CPU detected — SMU control is not supported; presets will not be applied.")
 
-    from Assets.Modules.hardware import _find_dmidecode, secure_boot_enabled
-    from Assets.Modules import smu
+    from Assets.core.hardware import _find_dmidecode, secure_boot_enabled
+    from Assets.amd import smu
 
     dmi = _find_dmidecode()
     if dmi is None:
@@ -790,7 +808,7 @@ def main() -> None:
     log.info("CPU: %s, Family: %s, Arch: %s", cpu, fam, arch)
 
     if not smu.is_available():
-        from Assets.Modules.hardware import ryzen_smu_installed, ryzen_smu_signed
+        from Assets.core.hardware import ryzen_smu_installed, ryzen_smu_signed
         installed = ryzen_smu_installed()
         sb = secure_boot_enabled()
         if not installed:

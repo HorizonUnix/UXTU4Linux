@@ -277,7 +277,7 @@ def _desktop_standard() -> Preset:
 
 
 def _socket_short(family: str) -> str:
-    from .runner import get_socket_short
+    from Assets.engine.runner import get_socket_short
     return get_socket_short(family)
 
 

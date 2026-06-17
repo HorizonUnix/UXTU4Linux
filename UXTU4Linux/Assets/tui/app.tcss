@@ -1,0 +1,486 @@
+Screen {
+    layout: vertical;
+}
+
+Button:focus {
+    text-style: bold;
+}
+
+ToastRack {
+    margin-bottom: 2;
+    margin-right: 1;
+}
+
+#banner {
+    color: $primary;
+    text-style: bold;
+    height: auto;
+    padding: 0 1;
+    overflow-x: hidden;
+}
+
+#hwline {
+    height: auto;
+    padding: 0 1;
+    text-style: bold;
+}
+
+#statusline {
+    height: auto;
+    padding: 0 1;
+    color: $text-muted;
+    display: none;
+}
+
+TabbedContent {
+    height: 1fr;
+    margin-top: 1;
+}
+
+#too_small {
+    display: none;
+    width: 1fr;
+    height: 1fr;
+    content-align: center middle;
+    color: $warning;
+}
+
+PowerTab {
+    height: 1fr;
+}
+
+#preset_buttons {
+    height: auto;
+    padding: 0;
+}
+
+.preset_btn {
+    width: 1fr;
+    min-width: 0;
+    margin: 0 1 0 0;
+}
+
+.preset_btn.eco { color: green; }
+.preset_btn.balance { color: dodgerblue; }
+.preset_btn.perf { color: orange; }
+.preset_btn.extreme { color: red; }
+
+.preset_btn.eco.active { background: green; color: black; text-style: bold; }
+.preset_btn.balance.active { background: dodgerblue; color: white; text-style: bold; }
+.preset_btn.perf.active { background: orange; color: black; text-style: bold; }
+.preset_btn.extreme.active { background: red; color: white; text-style: bold; }
+
+.row Select {
+    width: 36;
+}
+
+#preset_detail {
+    height: 1fr;
+    padding: 1 2;
+    border: round $panel-lighten-1;
+    margin: 1;
+}
+
+.row {
+    height: auto;
+    padding: 0 1;
+    align-vertical: middle;
+}
+
+.setrow {
+    height: auto;
+    align-vertical: middle;
+    padding: 0 1;
+}
+
+.set_label {
+    width: auto;
+    height: 3;
+    content-align-vertical: middle;
+    padding-left: 1;
+}
+
+.auto_label {
+    width: 16;
+    height: 3;
+    content-align-vertical: middle;
+    padding-left: 1;
+}
+
+.daemon_buttons Button {
+    width: 1fr;
+    min-width: 0;
+    margin: 0 1 0 0;
+}
+
+.section_head {
+    text-style: bold;
+    color: $accent;
+    padding: 1 1 0 1;
+}
+
+.settings_card {
+    height: auto;
+    border: round $panel-lighten-1;
+    padding: 1 2;
+    margin: 1 1 0 1;
+}
+
+.card_title {
+    text-style: bold;
+    color: $accent;
+    margin-bottom: 1;
+}
+
+.daemon_grid {
+    height: auto;
+    grid-size: 2;
+    grid-gutter: 1 1;
+    grid-rows: 3;
+    margin-top: 1;
+}
+
+.daemon_grid Button {
+    width: 1fr;
+    min-width: 0;
+}
+
+#daemon_status {
+    height: 1;
+    padding: 0 1;
+}
+
+StatusTab {
+    height: 1fr;
+}
+
+#status_panel {
+    height: auto;
+    padding: 1 2;
+    margin: 1 1 0 1;
+    border: round $panel-lighten-1;
+}
+
+#status_smu_card {
+    height: 1fr;
+    margin: 1 1 1 1;
+    padding: 1 0;
+    border: round $panel-lighten-1;
+}
+
+#status_smu_head {
+    height: auto;
+    padding: 0 2;
+}
+
+#status_smu_scroll {
+    height: 1fr;
+}
+
+#status_smu {
+    height: auto;
+    padding: 0 2;
+}
+
+SetupScreen {
+    align: center middle;
+}
+
+#setup_dialog {
+    width: 70;
+    max-width: 90%;
+    height: auto;
+    padding: 1 2;
+    border: round $primary;
+    background: $surface;
+}
+
+#setup_progress {
+    height: 1;
+    margin-bottom: 1;
+}
+
+#setup_switcher {
+    height: auto;
+}
+
+#setup_switcher > Vertical {
+    height: auto;
+}
+
+.setup_step_title {
+    text-style: bold;
+    color: $accent;
+    margin-bottom: 1;
+}
+
+.setup_body {
+    height: auto;
+    margin-bottom: 1;
+}
+
+#setup_daemon_status, #setup_hw_result {
+    height: auto;
+    margin-bottom: 1;
+}
+
+.setup_buttons {
+    height: auto;
+}
+
+.setup_buttons Button {
+    width: auto;
+    min-width: 0;
+    margin: 0 1 0 0;
+    padding: 0 2;
+}
+
+#reapply_interval {
+    width: 14;
+}
+
+ConfirmModal, PresetPickerModal, DaemonLogModal, HardwareInfoModal, FatalErrorModal, StalePathModal {
+    align: center middle;
+}
+
+#fatal_dialog {
+    width: 62;
+    max-width: 90%;
+    height: auto;
+    padding: 1 2;
+    border: round $error;
+    background: $surface;
+}
+
+#fatal_message {
+    height: auto;
+    margin: 1 0;
+}
+
+#hw_dialog {
+    width: 70;
+    max-width: 90%;
+    height: auto;
+    padding: 1 2;
+    border: round $accent;
+    background: $surface;
+}
+
+#hw_info {
+    height: auto;
+    margin-bottom: 1;
+}
+
+#hw_buttons {
+    height: auto;
+    align-horizontal: center;
+}
+
+#hw_buttons Button {
+    width: auto;
+    min-width: 0;
+    margin: 0 1;
+    padding: 0 2;
+}
+
+#log_dialog {
+    width: 100;
+    max-width: 95%;
+    height: 80%;
+    padding: 1 2;
+    border: round $accent;
+    background: $surface;
+}
+
+#log_view {
+    height: 1fr;
+    margin: 1 0;
+    border: round $panel-lighten-1;
+    background: $panel;
+    padding: 0 1;
+}
+
+#dialog {
+    width: 60;
+    max-width: 90%;
+    height: auto;
+    padding: 1 2;
+    border: round $accent;
+    background: $surface;
+}
+
+#dialog_buttons {
+    height: auto;
+    align-horizontal: center;
+}
+
+#dialog_buttons Button {
+    width: auto;
+    min-width: 0;
+    margin: 0 1;
+    padding: 0 2;
+}
+
+#confirm_prompt {
+    width: 1fr;
+    height: auto;
+    margin-bottom: 1;
+    padding: 0 1;
+    text-align: center;
+}
+
+#dialog_buttons .confirm_btn {
+    min-width: 0;
+    padding: 0 4;
+}
+
+AboutModal, UpdaterModal, UpdateProgressModal, SudoModal {
+    align: center middle;
+}
+
+#about_dialog {
+    width: 60;
+    max-width: 90%;
+    height: auto;
+    padding: 1 2;
+    border: round $accent;
+    background: $surface;
+}
+
+#about_info {
+    height: auto;
+    margin-bottom: 1;
+}
+
+#about_buttons {
+    height: auto;
+    align-horizontal: center;
+}
+
+.about_btn {
+    width: auto;
+    min-width: 0;
+    margin: 0 1;
+    padding: 0 2;
+}
+
+.github_btn {
+    background: white;
+    color: black;
+    text-style: bold;
+}
+
+.github_btn:hover {
+    background: $accent;
+    color: white;
+}
+
+#sudo_dialog {
+    width: 56;
+    max-width: 90%;
+    height: auto;
+    padding: 1 2;
+    border: round $accent;
+    background: $surface;
+}
+
+#sudo_desc {
+    height: auto;
+    margin-bottom: 1;
+}
+
+#sudo_pw {
+    margin-bottom: 1;
+}
+
+#sudo_error {
+    height: 1;
+    margin-bottom: 1;
+}
+
+#sudo_buttons {
+    height: auto;
+    align-horizontal: right;
+}
+
+#sudo_buttons Button {
+    width: auto;
+    min-width: 0;
+    margin: 0 0 0 1;
+    padding: 0 2;
+}
+
+.dialog_title {
+    text-style: bold;
+    width: 1fr;
+    margin-bottom: 1;
+}
+
+#upd_buttons {
+    height: auto;
+    align-horizontal: center;
+}
+
+#upd_buttons Button {
+    width: auto;
+    min-width: 0;
+    margin: 0 1;
+    padding: 0 2;
+}
+
+#upd_changelog_scroll {
+    height: 14;
+    border: round $panel-lighten-1;
+    margin: 1 0;
+}
+
+#upd_changelog {
+    padding: 0 1;
+}
+
+#hw_device, #hw_processor, #hw_memory, #hw_battery {
+    padding: 0 1;
+    height: auto;
+}
+
+#editor_topbar {
+    height: auto;
+    border: round $panel-lighten-1;
+    padding: 1 2;
+    margin: 0 1 1 1;
+}
+
+.topbar_row {
+    height: auto;
+}
+
+.topbar_row Button {
+    margin: 1 1 0 0;
+    width: 1fr;
+    min-width: 0;
+}
+
+#preset_select {
+    width: 30;
+}
+
+#new_name {
+    width: 1fr;
+    margin: 0 1;
+}
+
+.field_card {
+    height: auto;
+    border: round $panel-lighten-1;
+    padding: 1 2;
+    margin: 1 1 0 1;
+}
+.field_name { text-style: bold; }
+.field_hint { color: $text-muted; margin-bottom: 1; }
+.card_controls { height: auto; align-vertical: middle; }
+.card_controls Switch { width: 8; }
+.card_value { width: 14; margin-right: 1; }
+.card_controls Select { width: 28; }
+.unit { width: 6; height: 3; content-align-vertical: middle; }
+
+

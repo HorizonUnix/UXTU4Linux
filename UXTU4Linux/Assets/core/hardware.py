@@ -1,7 +1,5 @@
 import glob, os, shutil, subprocess
-from . import config as cfg
-from .ui import clear, pause, _B, _D, _R, _SEP_W
-from .termui import HIDE_CURSOR, SHOW_CURSOR
+from Assets.core import config as cfg
 
 
 _SBIN_PATHS = "/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/sbin:/usr/local/bin"
@@ -13,58 +11,51 @@ def _find_dmidecode() -> str | None:
     return shutil.which("dmidecode", path=":".join(dict.fromkeys(parts)))
 
 
-def check_binaries() -> None:
+def check_binaries() -> str | None:
     dmi = _find_dmidecode()
     if dmi is None:
-        print(
-            "\n  dmidecode is not installed.\n\n"
-            f"  Debian/Ubuntu : {_B}sudo apt install dmidecode{_R}\n"
-            f"  Fedora/RHEL   : {_B}sudo dnf install dmidecode{_R}\n"
-            f"  Arch          : {_B}sudo pacman -S dmidecode{_R}\n"
-            f"  openSUSE      : {_B}sudo zypper install dmidecode{_R}\n\n"
-            f"  Install guide: {_B}{cfg.INSTALL_WIKI_URL}{_R}\n"
+        return (
+            "dmidecode is not installed.\n\n"
+            "Debian/Ubuntu : sudo apt install dmidecode\n"
+            "Fedora/RHEL   : sudo dnf install dmidecode\n"
+            "Arch          : sudo pacman -S dmidecode\n"
+            "openSUSE      : sudo zypper install dmidecode\n\n"
+            f"Install guide: {cfg.INSTALL_WIKI_URL}"
         )
-        raise SystemExit(1)
     cfg.DMIDECODE = dmi
+    return None
 
 
-_SMU_INSTALL_GUIDE = f"  Install guide: {_B}{cfg.RYZEN_SMU_WIKI_URL}{_R}\n"
+_SMU_INSTALL_GUIDE = f"Install guide: {cfg.RYZEN_SMU_WIKI_URL}"
 
 
-def check_ryzen_smu() -> None:
-    from . import smu
+def check_ryzen_smu() -> str | None:
+    from Assets.amd import smu
 
     if smu.is_available():
         if not smu.version_ok():
             ver = smu.get_version()
             req = smu.version_str(smu.MIN_VERSION)
-            print(
-                f"\n  ryzen_smu version {ver} is too old (minimum required: {req}).\n\n"
+            return (
+                f"ryzen_smu version {ver} is too old (minimum required: {req}).\n\n"
                 f"{_SMU_INSTALL_GUIDE}"
             )
-            raise SystemExit(1)
-        return
+        return None
 
     installed = ryzen_smu_installed()
     signed = ryzen_smu_signed()
     sb = secure_boot_enabled()
 
     if not installed:
-        print(f"\n  ryzen_smu kernel module is not installed.\n\n{_SMU_INSTALL_GUIDE}")
-        raise SystemExit(1)
+        return f"ryzen_smu kernel module is not installed.\n\n{_SMU_INSTALL_GUIDE}"
 
     if sb and not signed:
-        print(
-            f"\n  ryzen_smu is installed but not signed for Secure Boot.\n\n"
+        return (
+            "ryzen_smu is installed but not signed for Secure Boot.\n\n"
             f"{_SMU_INSTALL_GUIDE}"
         )
-        raise SystemExit(1)
 
-    print(
-        f"\n  ryzen_smu is installed but not loaded.\n\n"
-        f"{_SMU_INSTALL_GUIDE}"
-    )
-    raise SystemExit(1)
+    return f"ryzen_smu is installed but not loaded.\n\n{_SMU_INSTALL_GUIDE}"
 
 
 def secure_boot_enabled() -> bool:
@@ -109,7 +100,7 @@ def ryzen_smu_signed() -> bool:
 
 
 def _dmi_raw(dmi_type: str) -> str:
-    from .ipc import get_client
+    from Assets.core.ipc import get_client
     return get_client().dmidecode(dmi_type)
 
 
@@ -466,7 +457,7 @@ def _compute_codename() -> None:
         cfg.set_config("Info", "Family", "Unknown")
         cfg.set_config("Info", "Type", "Unknown")
         return
-    from .runner import has_smu_support
+    from Assets.engine.runner import has_smu_support
     arch, family = _resolve_codename(raw_cpu, cpu_family, cpu_model)
     cpu_type = _cpu_type(family, arch)
     if cpu_type in ("Amd_Apu", "Amd_Desktop_Cpu") and not has_smu_support(family):
@@ -474,85 +465,3 @@ def _compute_codename() -> None:
     cfg.set_config("Info", "Architecture", arch)
     cfg.set_config("Info", "Family", family)
     cfg.set_config("Info", "Type", cpu_type)
-
-
-def show_info() -> None:
-    import sys
-    from . import termui
-
-    W = 14
-
-    def row(label: str, value: str) -> str:
-        return f"  {_D}{label:<{W}}{_R}  {value}"
-
-    def sep(title: str) -> list[str]:
-        return [f"  {_B}{title}{_R}", f"  {_D}{'─' * _SEP_W}{_R}"]
-
-    dev = _parse_device_info()
-    proc = _parse_processor_dmidecode()
-    l1, l2, l3 = _parse_cache_sizes()
-    mem = _parse_memory()
-
-    static: list[str] = [f"  {_B}Hardware Information{_R}", ""]
-    static += sep("Device")
-    static += [row("Name", dev["name"]), row("Producer", dev["producer"]), row("Model", dev["model"]), ""]
-    static += sep("Processor")
-    static += [
-        row("CPU", cfg.get("Info", "CPU")),
-        row("Producer", proc["manufacturer"]),
-        row("Codename", cfg.get("Info", "Family")),
-        row("Signature", cfg.get("Info", "Signature")),
-        row("Cores", proc["cores"]),
-        row("Threads", proc["threads"]),
-        row("Base clock", proc["base_clock"]),
-        row("L1 cache", l1),
-        row("L2 cache", l2),
-        row("L3 cache", l3),
-        "",
-    ]
-    static += sep("Memory")
-    static += [
-        row("Memory", mem["summary"]),
-        row("Producer", mem["manufacturer"]),
-        row("Model", mem["part_number"]),
-        row("Bus width", mem["width"]),
-        row("Modules", mem["modules"]),
-    ]
-
-    def _battery_lines() -> list[str]:
-        bat = _parse_battery()
-        if not bat:
-            return []
-        lines: list[str] = [""] + sep("Battery")
-        lines += [
-            row("Health", bat["health"]),
-            row("Cycles", bat["cycles"]),
-            row("Full charge", bat["full_charge"]),
-            row("Design cap.", bat["design_cap"]),
-            row("Charge rate", bat["charge_rate"]),
-        ]
-        return lines
-
-    if not sys.stdin.isatty():
-        clear()
-        for line in static + _battery_lines():
-            print(line)
-        print()
-        pause()
-        return
-
-    sys.stdout.write(HIDE_CURSOR)
-    sys.stdout.flush()
-    try:
-        while True:
-            content = static + _battery_lines() + ["", f"  {_D}Press Esc to go back{_R}"]
-            clear()
-            sys.stdout.write("\n".join(content))
-            sys.stdout.flush()
-
-            key = termui.get_key(timeout=3.0)
-            if key == termui.ESC:
-                break
-    finally:
-        sys.stdout.write(SHOW_CURSOR)
-        sys.stdout.flush()

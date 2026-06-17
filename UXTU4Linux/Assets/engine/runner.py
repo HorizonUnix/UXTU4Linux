@@ -580,7 +580,7 @@ def _apply_nvidia(packed: str, lines: list[str]) -> None:
 
 
 def _apply_system(name: str, raw: int, lines: list[str]) -> None:
-    from . import platformctl
+    from Assets.system import platformctl
 
     if name == "sys-power-profile":
         lines.append(platformctl.set_power_profile(raw))
@@ -597,7 +597,7 @@ def _apply_system(name: str, raw: int, lines: list[str]) -> None:
 
 
 def apply_args(args_str: str, family: str) -> tuple[str, bool]:
-    from . import smu
+    from Assets.amd import smu
 
     tokens = shlex.split(args_str)
     lines: list[str] = []

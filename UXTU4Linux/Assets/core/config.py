@@ -1,11 +1,10 @@
 import os
-import sys
 import tempfile
 from configparser import ConfigParser
 from pathlib import Path
 
-LOCAL_VERSION = "0.8.1"
-LOCAL_BUILD = "8-official-14Jun26-r1"
+LOCAL_VERSION = "0.9.0"
+LOCAL_BUILD = "9-beta-17Jun26-textual01"
 
 GITHUB_API_URL = "https://api.github.com/repos/HorizonUnix/UXTU4Linux/releases/latest"
 LATEST_VER_URL = "https://github.com/HorizonUnix/UXTU4Linux/releases/latest"
@@ -69,8 +68,8 @@ def set_config(section: str, key: str, value: str) -> None:
 def save() -> None:
     try:
         atomic_write(CONFIG_PATH, _render())
-    except OSError as e:
-        print(f"  Warning: could not save config to {CONFIG_PATH}: {e}", file=sys.stderr)
+    except OSError:
+        pass
 
 
 def _render() -> str:
