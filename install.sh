@@ -317,7 +317,12 @@ uninstall() {
     info "Launcher : $BIN_WRAPPER"
     info "Files    : $INSTALL_DIR"
     echo ""
-    read -rp "  Continue? [y/N] " reply
+    local reply=""
+    if [[ "${UXTU_ASSUME_YES:-}" == "1" ]]; then
+        reply="y"
+    elif [[ -e /dev/tty ]]; then
+        read -rp "  Continue? [y/N] " reply </dev/tty || reply=""
+    fi
     [[ "$reply" =~ ^[Yy]$ ]] || { echo ""; info "Cancelled."; echo ""; exit 0; }
     echo ""
     hr
