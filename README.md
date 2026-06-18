@@ -1,4 +1,4 @@
-<picture><img align="left" src="/Img/Logo.png"/></picture>
+<picture><img align="center" src="/Img/Banner.gif"/></picture>
 <h4>Powered by ryzen_smu and Python</h4>
 
 [![GitHub Downloads](https://img.shields.io/github/downloads/HorizonUnix/UXTU4Linux/total?style=flat-square&color=blue)](https://github.com/HorizonUnix/UXTU4Linux/releases)
