@@ -28,7 +28,7 @@ class PowerTab(Vertical):
     def compose(self) -> ComposeResult:
         self._presets = power.get_presets()
         with Vertical(classes="settings_card"):
-            yield Static("Premade Preset", classes="card_title")
+            yield Static("Premade Presets", classes="card_title")
             with Horizontal(id="preset_buttons"):
                 for name in self._presets:
                     yield Button(name, id=f"pbtn-{name}",
@@ -201,7 +201,7 @@ class CustomEditor(VerticalScroll):
         names = [_display_name(n) for n in get_custom_preset_names()]
         sel_kwargs = {"value": self.preset_name} if self.preset_name in names else {}
         with Vertical(id="editor_topbar"):
-            yield Static("Custom Preset", classes="card_title")
+            yield Static("Custom Presets", classes="card_title")
             with Horizontal(classes="topbar_row"):
                 yield Select([(n, n) for n in names], prompt="Saved Presets",
                              id="preset_select", allow_blank=True, **sel_kwargs)
@@ -385,7 +385,7 @@ def _rows(pairs: list[tuple[str, str]]) -> str:
 class HardwareTab(VerticalScroll):
     def compose(self) -> ComposeResult:
         with Vertical(classes="settings_card"):
-            yield Static("Hardware", classes="card_title")
+            yield Static("System Info", classes="card_title")
             yield Collapsible(Static("Loading…", id="hw_device"),
                               title="Device Information", collapsed=False)
             yield Collapsible(Static("Loading…", id="hw_processor"),
@@ -393,7 +393,7 @@ class HardwareTab(VerticalScroll):
             yield Collapsible(Static("Loading…", id="hw_memory"),
                               title="Memory Information", collapsed=False)
             yield Collapsible(Static("", id="hw_battery"),
-                              title="Battery", collapsed=False, id="hw_battery_card")
+                              title="Battery Information", collapsed=False, id="hw_battery_card")
 
     def on_mount(self) -> None:
         self._load_static()
@@ -448,7 +448,7 @@ class StatusTab(Vertical):
             yield Static("Daemon status", classes="card_title")
             yield Static("", id="status_info")
         with Vertical(id="status_smu_card"):
-            yield Static("SMU output (live)", id="status_smu_head", classes="card_title")
+            yield Static("SMU output", id="status_smu_head", classes="card_title")
             with VerticalScroll(id="status_smu_scroll"):
                 yield Static("", id="status_smu")
 
@@ -475,7 +475,7 @@ class StatusTab(Vertical):
         if not st.get("ok"):
             panel.update("Daemon         [yellow]Stopped[/]\n"
                          "Install or start it from the Settings tab.")
-            head.update("SMU output (live)")
+            head.update("SMU output")
             smu.update("")
             return
 
@@ -508,7 +508,7 @@ class StatusTab(Vertical):
 
         out = st.get("last_output") or ""
         if not out:
-            head.update("SMU output (live)")
+            head.update("SMU output")
             smu.update("[dim]No preset applied yet.[/]")
             return
         head.update("[yellow]SMU output — some commands were rejected[/]"

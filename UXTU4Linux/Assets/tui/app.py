@@ -30,8 +30,8 @@ class U4LApp(App):
     BINDINGS = [
         ("1", "show_tab('power')", "Premade"),
         ("2", "show_tab('custom')", "Custom"),
-        ("3", "show_tab('automations')", "Automations"),
-        ("4", "show_tab('hardware')", "Hardware"),
+        ("3", "show_tab('automations')", "Auto"),
+        ("4", "show_tab('hardware')", "Info"),
         ("5", "show_tab('status')", "Status"),
         ("6", "show_tab('settings')", "Settings"),
         ("question_mark", "about", "About"),
@@ -48,9 +48,9 @@ class U4LApp(App):
                 yield PowerTab()
             with TabPane("Custom", id="custom"):
                 yield CustomEditor()
-            with TabPane("Automations", id="automations"):
+            with TabPane("Auto", id="automations"):
                 yield AutomationsTab()
-            with TabPane("Hardware", id="hardware"):
+            with TabPane("Info", id="hardware"):
                 yield HardwareTab()
             with TabPane("Status", id="status"):
                 yield StatusTab()
