@@ -9,13 +9,9 @@ from textual.app import App, ComposeResult
 from textual.widgets import Static, TabbedContent, TabPane, Footer
 
 from Assets.core import config as cfg
-from Assets.tui import banner
-from Assets.tui.power_tab import PowerTab
-from Assets.tui.custom_tab import CustomEditor
-from Assets.tui.automations_tab import AutomationsTab
-from Assets.tui.settings_tab import SettingsTab
-from Assets.tui.hardware_tab import HardwareTab
-from Assets.tui.status_tab import StatusTab
+from Assets.tui import helpers as banner
+from Assets.tui.tabs import (
+    PowerTab, CustomEditor, AutomationsTab, SettingsTab, HardwareTab, StatusTab)
 
 _PAGES = ["power", "custom", "automations", "hardware", "status", "settings"]
 
@@ -32,15 +28,15 @@ class U4LApp(App):
         self._path_stale = path_stale
 
     BINDINGS = [
-        ("q", "quit", "Quit"),
         ("1", "show_tab('power')", "Premade"),
         ("2", "show_tab('custom')", "Custom"),
         ("3", "show_tab('automations')", "Automations"),
         ("4", "show_tab('hardware')", "Hardware"),
         ("5", "show_tab('status')", "Status"),
         ("6", "show_tab('settings')", "Settings"),
-        ("escape", "focus_tabs", "Tabs"),
         ("question_mark", "about", "About"),
+        ("escape", "focus_tabs", "Tabs"),
+        ("q", "quit", "Quit"),
     ]
 
     def compose(self) -> ComposeResult:
@@ -74,8 +70,8 @@ class U4LApp(App):
             self.push_screen(FatalErrorModal(self._dep_error))
             return
         if self._first_run:
-            from Assets.tui.setup_screen import SetupScreen
-            self.push_screen(SetupScreen())
+            from Assets.tui.wizard import SetupWizard
+            self.push_screen(SetupWizard())
         elif self._path_stale:
             from Assets.tui.modals import StalePathModal
             self.push_screen(StalePathModal())
@@ -111,7 +107,7 @@ class U4LApp(App):
             pass
 
     def action_about(self) -> None:
-        from Assets.tui.info_modals import AboutModal
+        from Assets.tui.modals import AboutModal
         self.push_screen(AboutModal())
 
     def on_resize(self, event) -> None:
@@ -161,7 +157,7 @@ class U4LApp(App):
 
     @work(thread=True, exclusive=True, group="status")
     def refresh_status(self) -> None:
-        from Assets.tui.ipc_worker import fetch_status
+        from Assets.tui.helpers import fetch_status
         st = fetch_status()
         self.call_from_thread(self._render_status, st)
 
@@ -174,8 +170,8 @@ class U4LApp(App):
         except NoMatches:
             return
         if not st.get("ok"):
-            from Assets.tui.setup_screen import SetupScreen
-            in_setup = isinstance(self.screen, SetupScreen)
+            from Assets.tui.wizard import SetupWizard
+            in_setup = isinstance(self.screen, SetupWizard)
             line.display = not in_setup
             line.update("[yellow]Daemon offline — install or start it from the Settings tab.[/]")
             if not self._warned_offline and not in_setup:
@@ -201,7 +197,7 @@ class U4LApp(App):
 
     def _prompt_startup_update(self, channel: str, version: str) -> None:
         from Assets.tui.modals import ConfirmModal
-        from Assets.tui.info_modals import UpdateProgressModal
+        from Assets.tui.modals import UpdateProgressModal
         from Assets.flows.updater import _STABLE_URL, _BETA_URL
         if isinstance(self.screen, ConfirmModal):
             return

@@ -12,7 +12,7 @@ ToastRack {
 }
 
 #banner {
-    color: $primary;
+    color: $accent;
     text-style: bold;
     height: auto;
     padding: 0 1;
@@ -182,7 +182,7 @@ StatusTab {
     padding: 0 2;
 }
 
-SetupScreen {
+SetupWizard {
     align: center middle;
 }
 

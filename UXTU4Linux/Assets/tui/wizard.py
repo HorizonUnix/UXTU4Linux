@@ -12,7 +12,7 @@ from Assets.core import config as cfg
 _SUPPORTED = ("Amd_Apu", "Amd_Desktop_Cpu")
 
 
-class SetupScreen(ModalScreen):
+class SetupWizard(ModalScreen):
     def compose(self) -> ComposeResult:
         with Vertical(id="setup_dialog"):
             yield Static("First-time setup", classes="dialog_title")
@@ -77,7 +77,7 @@ class SetupScreen(ModalScreen):
     async def _install_daemon(self) -> None:
         import asyncio
         from Assets.daemon import service
-        from Assets.tui.privileged import ensure_sudo
+        from Assets.tui.helpers import ensure_sudo
 
         if not await ensure_sudo(self.app):
             self.query_one("#setup_daemon_status", Static).update(
