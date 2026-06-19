@@ -4,7 +4,7 @@ from configparser import ConfigParser
 from pathlib import Path
 
 LOCAL_VERSION = "0.9.0"
-LOCAL_BUILD = "9-beta-18Jun26-textualrc1"
+LOCAL_BUILD = "9-beta-19Jun26-RC2"
 
 GITHUB_API_URL = "https://api.github.com/repos/HorizonUnix/UXTU4Linux/releases/latest"
 LATEST_VER_URL = "https://github.com/HorizonUnix/UXTU4Linux/releases/latest"

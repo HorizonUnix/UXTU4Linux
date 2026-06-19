@@ -24,7 +24,35 @@ _AUTOMATIONS_ON_MSG = (
 )
 
 
-class PowerTab(Vertical):
+class HomeTab(VerticalScroll):
+    _NAV = (
+        ("Premade Presets", "power"),
+        ("Custom Presets", "custom"),
+        ("Automations", "automations"),
+        ("System Info", "hardware"),
+        ("Status", "status"),
+        ("Settings", "settings"),
+    )
+
+    def compose(self) -> ComposeResult:
+        with Vertical(classes="settings_card"):
+            yield Static("Home", classes="card_title")
+            yield Static("Pick where to go:", classes="field_hint")
+            with Grid(classes="home_grid"):
+                for label, tab in self._NAV:
+                    yield Button(label, id=f"home-{tab}", variant="primary")
+            yield Button("About", id="home-about", classes="home_about")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        bid = event.button.id or ""
+        if bid == "home-about":
+            self.app.action_about()
+        elif bid.startswith("home-"):
+            self.app.set_focus(None)
+            self.app.action_show_tab(bid[len("home-"):])
+
+
+class PowerTab(VerticalScroll):
     def compose(self) -> ComposeResult:
         self._presets = power.get_presets()
         with Vertical(classes="settings_card"):
@@ -97,12 +125,12 @@ class PowerTab(Vertical):
 _HELP = (
     "[b]Override[/b]\n"
     "When ON, the daemon automatically switches presets based on your power source:\n"
-    "  • On Battery  — applied when you unplug the charger\n"
-    "  • On AC Power — applied when you plug it back in\n"
+    "  • Battery Charge    — applied when the charger is plugged in\n"
+    "  • Battery Discharge — applied when you unplug the charger\n"
     "Leave a slot on None to keep using your current Power Management preset for\n"
-    "that state. You need at least one of On AC / On Battery set to turn Override on.\n"
+    "that state. You need at least one of these set to turn Override on.\n"
     "\n"
-    "[b]On Resume[/b]\n"
+    "[b]System Resume[/b]\n"
     "Applied once each time the machine wakes from sleep or suspend. This works on\n"
     "its own — Override does not need to be ON for it to take effect."
 )
@@ -110,9 +138,15 @@ _HELP = (
 
 class AutomationsTab(VerticalScroll):
     _SLOTS = (
-        ("battery", "On Battery", au.get_battery_preset, au.set_battery_preset),
-        ("ac", "On AC Power", au.get_ac_preset, au.set_ac_preset),
-        ("resume", "On Resume", au.get_resume_preset, au.set_resume_preset),
+        ("ac", "Preset on Battery Charge",
+         "Provides the ability to set a preset to apply when the battery is charging.",
+         au.get_ac_preset, au.set_ac_preset),
+        ("battery", "Preset on Battery Discharge",
+         "Provides the ability to set a preset to apply when the battery is discharging.",
+         au.get_battery_preset, au.set_battery_preset),
+        ("resume", "Preset on System Resume",
+         "Provides the ability to set a preset to apply on system resume from sleep.",
+         au.get_resume_preset, au.set_resume_preset),
     )
 
     def _slot_options(self) -> list[tuple[str, str]]:
@@ -130,11 +164,12 @@ class AutomationsTab(VerticalScroll):
             yield Static("Automations", classes="card_title")
             with Horizontal(classes="setrow"):
                 yield Switch(value=au.automation_enabled(), id="auto_switch")
-                yield Label("Override (AC / Battery)", classes="set_label")
-            for slot_id, label, getter, _ in self._SLOTS:
+                yield Label("Override (Battery Charge / Discharge)", classes="set_label")
+            for slot_id, label, desc, getter, _ in self._SLOTS:
                 cur = getter() or ""
-                with Horizontal(classes="row"):
-                    yield Label(label, classes="auto_label")
+                with Vertical(classes="auto_slot"):
+                    yield Static(label, classes="field_name")
+                    yield Static(desc, classes="field_hint")
                     yield Select(list(options), value=cur if cur in valid else "",
                                  allow_blank=False, id=f"slot-{slot_id}")
             with Collapsible(title="How automations work", collapsed=True):
@@ -144,8 +179,8 @@ class AutomationsTab(VerticalScroll):
         if event.value:
             if not (au.get_ac_preset() or au.get_battery_preset()):
                 event.switch.value = False
-                self.app.notify("Configure an On AC or On Battery preset before enabling Override.",
-                                severity="warning")
+                self.app.notify("Set a Battery Charge or Battery Discharge preset before "
+                                "enabling Override.", severity="warning")
                 return
             au.enable_automations()
         else:
@@ -158,7 +193,7 @@ class AutomationsTab(VerticalScroll):
             return
         slot_id = sid[len("slot-"):]
         slot = next(s for s in self._SLOTS if s[0] == slot_id)
-        getter, setter = slot[2], slot[3]
+        getter, setter = slot[3], slot[4]
         value = event.value if isinstance(event.value, str) else ""
         if value == getter():
             return
@@ -442,24 +477,18 @@ def _strip(name: str) -> str:
     return (name or "").removesuffix("_custom_preset")
 
 
-class StatusTab(Vertical):
+class StatusTab(VerticalScroll):
     def compose(self) -> ComposeResult:
         with Vertical(id="status_panel"):
             yield Static("Daemon status", classes="card_title")
             yield Static("", id="status_info")
         with Vertical(id="status_smu_card"):
             yield Static("SMU output", id="status_smu_head", classes="card_title")
-            with VerticalScroll(id="status_smu_scroll"):
-                yield Static("", id="status_smu")
+            yield Static("", id="status_smu")
 
     def on_mount(self) -> None:
-        self._last_smu = ""
         self.refresh_status()
         self.set_interval(1.5, self.refresh_status)
-
-    def on_show(self) -> None:
-        scroll = self.query_one("#status_smu_scroll", VerticalScroll)
-        self.call_after_refresh(scroll.scroll_end, animate=False)
 
     @work(thread=True, exclusive=True, group="status_tab")
     def refresh_status(self) -> None:
@@ -499,9 +528,9 @@ class StatusTab(Vertical):
             bat = _strip(cfg.get("Automations", "OnBattery", ""))
             rows.append("Automations    [green]ON[/]")
             if ac:
-                rows.append(f"  On AC        {ac}")
+                rows.append(f"  On Charge    {ac}")
             if bat:
-                rows.append(f"  On Battery   {bat}")
+                rows.append(f"  On Discharge {bat}")
         else:
             rows.append("Automations    [dim]OFF[/]")
         panel.update("\n".join(rows))
@@ -514,10 +543,6 @@ class StatusTab(Vertical):
         head.update("[yellow]SMU output — some commands were rejected[/]"
                     if st.get("last_rejected") else "[green]SMU output — OK[/]")
         smu.update(out)
-        if out != self._last_smu:
-            self._last_smu = out
-            scroll = self.query_one("#status_smu_scroll", VerticalScroll)
-            self.call_after_refresh(scroll.scroll_end, animate=False)
 
 
 _TOGGLES = (

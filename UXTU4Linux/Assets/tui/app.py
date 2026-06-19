@@ -11,9 +11,9 @@ from textual.widgets import Static, TabbedContent, TabPane, Footer
 from Assets.core import config as cfg
 from Assets.tui import helpers as banner
 from Assets.tui.tabs import (
-    PowerTab, CustomEditor, AutomationsTab, SettingsTab, HardwareTab, StatusTab)
+    HomeTab, PowerTab, CustomEditor, AutomationsTab, SettingsTab, HardwareTab, StatusTab)
 
-_PAGES = ["power", "custom", "automations", "hardware", "status", "settings"]
+_PAGES = ["home", "power", "custom", "automations", "hardware", "status", "settings"]
 
 
 class U4LApp(App):
@@ -28,6 +28,7 @@ class U4LApp(App):
         self._path_stale = path_stale
 
     BINDINGS = [
+        ("h", "show_tab('home')", "Home"),
         ("1", "show_tab('power')", "Premade"),
         ("2", "show_tab('custom')", "Custom"),
         ("3", "show_tab('automations')", "Auto"),
@@ -43,7 +44,9 @@ class U4LApp(App):
         yield Static(banner.BANNER, id="banner")
         yield Static(banner.status_line(), id="hwline")
         yield Static("", id="statusline")
-        with TabbedContent(initial="power", id="tabs"):
+        with TabbedContent(initial="home", id="tabs"):
+            with TabPane("Home", id="home"):
+                yield HomeTab()
             with TabPane("Premade", id="power"):
                 yield PowerTab()
             with TabPane("Custom", id="custom"):

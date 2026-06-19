@@ -75,7 +75,7 @@ PowerTab {
 }
 
 #preset_detail {
-    height: 1fr;
+    height: auto;
     padding: 1 2;
     border: round $panel-lighten-1;
     margin: 1;
@@ -94,17 +94,26 @@ PowerTab {
 }
 
 .set_label {
-    width: auto;
-    height: 3;
+    width: 1fr;
+    height: auto;
+    min-height: 3;
     content-align-vertical: middle;
     padding-left: 1;
 }
 
-.auto_label {
-    width: 16;
-    height: 3;
-    content-align-vertical: middle;
-    padding-left: 1;
+.auto_slot {
+    height: auto;
+    margin-top: 1;
+    padding: 0 1;
+}
+
+.auto_slot Select {
+    width: 1fr;
+    max-width: 50;
+}
+
+AutomationsTab Collapsible {
+    margin-top: 1;
 }
 
 .daemon_buttons Button {
@@ -132,6 +141,24 @@ PowerTab {
     margin-bottom: 1;
 }
 
+.home_grid {
+    height: auto;
+    grid-size: 2;
+    grid-gutter: 1 1;
+    grid-rows: 3;
+    margin-top: 1;
+}
+
+.home_grid Button {
+    width: 1fr;
+    min-width: 0;
+}
+
+.home_about {
+    width: 1fr;
+    margin-top: 1;
+}
+
 .daemon_grid {
     height: auto;
     grid-size: 2;
@@ -146,7 +173,7 @@ PowerTab {
 }
 
 #daemon_status {
-    height: 1;
+    height: auto;
     padding: 0 1;
 }
 
@@ -162,7 +189,7 @@ StatusTab {
 }
 
 #status_smu_card {
-    height: 1fr;
+    height: auto;
     margin: 1 1 1 1;
     padding: 1 0;
     border: round $panel-lighten-1;
@@ -171,10 +198,6 @@ StatusTab {
 #status_smu_head {
     height: auto;
     padding: 0 2;
-}
-
-#status_smu_scroll {
-    height: 1fr;
 }
 
 #status_smu {
@@ -358,10 +381,9 @@ AboutModal, UpdaterModal, UpdateProgressModal, SudoModal {
 }
 
 .about_btn {
-    width: auto;
+    width: 1fr;
     min-width: 0;
     margin: 0 1;
-    padding: 0 2;
 }
 
 .github_btn {
