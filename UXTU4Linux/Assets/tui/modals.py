@@ -46,8 +46,9 @@ class DaemonLogModal(ModalScreen):
 
     def compose(self) -> ComposeResult:
         with Vertical(id="log_dialog"):
-            yield Label("Daemon logs (live)", classes="dialog_title")
-            yield RichLog(id="log_view", wrap=False, highlight=False, markup=False)
+            yield Label("Daemon logs", classes="dialog_title")
+            yield RichLog(id="log_view", wrap=False, highlight=False, markup=False,
+                          auto_scroll=False)
             with Horizontal(id="dialog_buttons"):
                 yield Button("Close", id="log_close", variant="primary")
 
@@ -63,8 +64,18 @@ class DaemonLogModal(ModalScreen):
 
     def _render_log(self, text: str) -> None:
         view = self.query_one("#log_view", RichLog)
+        was_at_bottom = view.scroll_offset.y >= view.max_scroll_y
+        prev_y = view.scroll_offset.y
         view.clear()
         view.write(text)
+        self.call_after_refresh(self._restore_scroll, was_at_bottom, prev_y)
+
+    def _restore_scroll(self, was_at_bottom: bool, prev_y: int) -> None:
+        view = self.query_one("#log_view", RichLog)
+        if was_at_bottom:
+            view.scroll_end(animate=False)
+        else:
+            view.scroll_to(y=prev_y, animate=False)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         self.dismiss()

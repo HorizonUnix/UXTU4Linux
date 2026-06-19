@@ -608,11 +608,13 @@ class PowerDaemon:
         except Exception as exc:
             log.error("Failed to load saved preset: %s", exc)
             return {"ok": False, "error": str(exc)}
-        if state is None:
-            return {"ok": False, "error": "Saved preset not found"}
-
         self._stop_loop()
         self._stop_monitor()
+
+        if state is None:
+            with self._lock:
+                self._automation = False
+            return {"ok": False, "error": "Saved preset not found"}
 
         with self._lock:
             self._automation = state.automation

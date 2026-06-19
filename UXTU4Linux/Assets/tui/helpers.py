@@ -1,7 +1,46 @@
 from __future__ import annotations
 
+import os
+
 from Assets.core import config as cfg
 from Assets.core.ipc import get_client
+
+
+_AC_TYPES = frozenset({"Mains", "USB", "USB_C", "USB_PD", "USB_PD_DRP", "USB_C_DRP"})
+
+
+def on_ac() -> bool:
+    ac_online = False
+    found_ac = False
+    battery_discharging = False
+    try:
+        for entry in os.listdir("/sys/class/power_supply"):
+            base = f"/sys/class/power_supply/{entry}"
+            try:
+                with open(f"{base}/type") as f:
+                    ptype = f.read().strip()
+            except OSError:
+                continue
+            if ptype in _AC_TYPES:
+                found_ac = True
+                try:
+                    with open(f"{base}/online") as f:
+                        if f.read().strip() == "1":
+                            ac_online = True
+                except OSError:
+                    pass
+            elif ptype == "Battery":
+                try:
+                    with open(f"{base}/status") as f:
+                        if f.read().strip().lower() == "discharging":
+                            battery_discharging = True
+                except OSError:
+                    pass
+    except Exception:
+        pass
+    if found_ac:
+        return ac_online
+    return not battery_discharging
 
 
 WORDMARK = "◆ UXTU4Linux"

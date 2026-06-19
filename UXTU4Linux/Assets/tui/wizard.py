@@ -19,33 +19,44 @@ class SetupWizard(ModalScreen):
             yield Static("", id="setup_progress")
             with ContentSwitcher(initial="welcome", id="setup_switcher"):
                 with Vertical(id="welcome"):
-                    yield Static("Welcome", classes="setup_step_title")
+                    yield Static("Welcome to UXTU4Linux", classes="setup_step_title")
                     yield Static(
-                        "Universal x86 Tuning Utility for AMD Zen CPUs on Linux.\n"
-                        "Ported from the original Universal x86 Tuning Utility for Windows.\n"
-                        "Tune power, clocks and the Curve Optimiser through a root daemon.",
+                        "Take control of your AMD Ryzen CPU or APU — tune power limits, "
+                        "temperatures, clocks and the Curve Optimiser to fit how you "
+                        "actually use your machine, whether that's longer battery life "
+                        "or more performance.\n\n"
+                        "This is the Linux port of the Universal x86 Tuning Utility, the "
+                        "popular Windows tuning tool.\n\n"
+                        "Setup takes about a minute: we'll install a small background "
+                        "service and detect your hardware. Let's get started.",
                         classes="setup_body")
                     with Horizontal(classes="setup_buttons"):
                         yield Button("Begin setup", id="setup_begin", variant="primary")
                 with Vertical(id="daemon"):
-                    yield Static("Background daemon", classes="setup_step_title")
+                    yield Static("Set up the background service", classes="setup_step_title")
                     yield Static(
-                        "The daemon runs as root and is the only process allowed to apply\n"
-                        "tuning to your hardware. It is required.",
+                        "UXTU4Linux uses a small background service to talk to your CPU. "
+                        "It's the only part that needs administrator access, so the app "
+                        "itself never has to run as root.\n\n"
+                        "Press Install / enable daemon below. You'll be asked for your "
+                        "password once, then the service starts automatically and runs on "
+                        "every boot.",
                         classes="setup_body")
                     yield Static("", id="setup_daemon_status")
                     with Horizontal(classes="setup_buttons"):
                         yield Button("Install / enable daemon", id="setup_install", variant="primary")
                         yield Button("Continue", id="setup_daemon_continue", disabled=True)
                 with Vertical(id="hardware"):
-                    yield Static("Detect hardware", classes="setup_step_title")
+                    yield Static("Detect your hardware", classes="setup_step_title")
                     yield Static(
-                        "Detect your processor so the matching preset profile can load.\n"
-                        "This requires the daemon to be running.",
+                        "Last step. We're identifying your processor so the right presets "
+                        "and tuning options load for your exact chip.\n\n"
+                        "This runs automatically — just a moment. When it's done, press "
+                        "Finish.",
                         classes="setup_body")
                     yield Static("", id="setup_hw_result")
                     with Horizontal(classes="setup_buttons"):
-                        yield Button("Detect hardware", id="setup_detect", variant="primary")
+                        yield Button("Detect again", id="setup_detect")
                         yield Button("Finish", id="setup_finish", disabled=True, variant="success")
 
     def on_mount(self) -> None:
@@ -66,6 +77,8 @@ class SetupWizard(ModalScreen):
         elif bid == "setup_daemon_continue":
             self.query_one(ContentSwitcher).current = "hardware"
             self._set_step(3)
+            self.query_one("#setup_hw_result", Static).update("Detecting hardware…")
+            self._detect()
         elif bid == "setup_detect":
             self.query_one("#setup_hw_result", Static).update("Detecting hardware…")
             self._detect()

@@ -123,29 +123,35 @@ class PowerTab(VerticalScroll):
 
 
 _HELP = (
+    "Automations let UXTU4Linux switch presets for you, so you don't have to think "
+    "about it.\n"
+    "\n"
     "[b]Override[/b]\n"
-    "When ON, the daemon automatically switches presets based on your power source:\n"
+    "Turn this on to apply a different preset depending on whether you're plugged in "
+    "or on battery:\n"
     "  • Battery Charge    — applied when the charger is plugged in\n"
     "  • Battery Discharge — applied when you unplug the charger\n"
-    "Leave a slot on None to keep using your current Power Management preset for\n"
-    "that state. You need at least one of these set to turn Override on.\n"
+    "The daemon watches your power source and swaps presets automatically the moment "
+    "it changes. Leave a slot on None to keep your current preset for that state. "
+    "You'll need at least one slot set before Override can turn on.\n"
     "\n"
     "[b]System Resume[/b]\n"
-    "Applied once each time the machine wakes from sleep or suspend. This works on\n"
-    "its own — Override does not need to be ON for it to take effect."
+    "Pick a preset to re-apply each time your machine wakes from sleep, suspend or "
+    "hibernation — handy because some hardware forgets its tuning after sleeping. "
+    "This one works on its own; Override doesn't need to be on."
 )
 
 
 class AutomationsTab(VerticalScroll):
     _SLOTS = (
         ("ac", "Preset on Battery Charge",
-         "Provides the ability to set a preset to apply when the battery is charging.",
+         "Applied automatically when you plug in the charger.",
          au.get_ac_preset, au.set_ac_preset),
         ("battery", "Preset on Battery Discharge",
-         "Provides the ability to set a preset to apply when the battery is discharging.",
+         "Applied automatically when you unplug and run on battery.",
          au.get_battery_preset, au.set_battery_preset),
         ("resume", "Preset on System Resume",
-         "Provides the ability to set a preset to apply on system resume from sleep.",
+         "Provides the ability to set a preset to apply on system resume from sleep/hibernation.",
          au.get_resume_preset, au.set_resume_preset),
     )
 
@@ -175,12 +181,15 @@ class AutomationsTab(VerticalScroll):
             with Collapsible(title="How automations work", collapsed=True):
                 yield Static(_HELP, id="auto_help")
 
+    def on_show(self) -> None:
+        self.run_worker(self.recompose())
+
     def on_switch_changed(self, event: Switch.Changed) -> None:
         if event.value:
             if not (au.get_ac_preset() or au.get_battery_preset()):
                 event.switch.value = False
                 self.app.notify("Set a Battery Charge or Battery Discharge preset before "
-                                "enabling Override.", severity="warning")
+                                "enabling Override.", title="Automations", severity="warning")
                 return
             au.enable_automations()
         else:
@@ -319,7 +328,8 @@ class CustomEditor(VerticalScroll):
             self._sync_inputs()
             name = self.query_one("#new_name", Input).value.strip() or self.preset_name
             if not name:
-                self.app.notify("Enter a preset name first.", severity="warning")
+                self.app.notify("Enter a preset name first.", title="Save preset",
+                                severity="warning")
                 return
             replace = self._loaded_name if self._loaded_name and self._loaded_name != name else None
             self.preset_name = name
@@ -340,11 +350,13 @@ class CustomEditor(VerticalScroll):
             new_name = unique_preset_name(source)
             self.preset_name = new_name
             self._do_save(new_name)
-            self.app.notify(f"Duplicated to '{new_name}'.", severity="information")
+            self.app.notify(f"Duplicated to '{new_name}'.", title="Duplicate preset",
+                            severity="information")
         elif bid == "ed_delete":
             sel = self.query_one("#preset_select", Select)
             if not isinstance(sel.value, str):
-                self.app.notify("Select a saved preset to delete.", severity="warning")
+                self.app.notify("Select a saved preset to delete.", title="Delete preset",
+                                severity="warning")
                 return
             name = sel.value
             self.app.push_screen(ConfirmModal(f"Delete preset '{name}'?"),
@@ -353,7 +365,7 @@ class CustomEditor(VerticalScroll):
     async def _load_preset(self, name: str) -> None:
         fields = load_preset_fields(name)
         if fields is None:
-            self.app.notify(f"Preset '{name}' not found.", severity="error")
+            self.app.notify(f"Preset '{name}' not found.", title="Load preset", severity="error")
             return
         self.fields = fields
         self.preset_name = name
@@ -372,7 +384,8 @@ class CustomEditor(VerticalScroll):
         args = build_args(self.fields, self._cpu_type)
         if not args.strip():
             self.app.call_from_thread(
-                lambda: self.app.notify("No parameters are enabled.", severity="warning"))
+                lambda: self.app.notify("No parameters are enabled.", title="Apply preset",
+                                        severity="warning"))
             return
         from Assets.tuning.power import apply_preset
         name = self.preset_name or "Custom"
@@ -382,7 +395,8 @@ class CustomEditor(VerticalScroll):
                                       title="Applied", severity="information")
         else:
             err = result.get("error", "apply failed")
-            self.app.call_from_thread(lambda: self.app.notify(err, severity="error"))
+            self.app.call_from_thread(
+                lambda: self.app.notify(err, title="Apply failed", severity="error"))
 
     @work(thread=True, exclusive=True, group="custom")
     def _do_delete(self, name: str) -> None:
@@ -487,8 +501,40 @@ class StatusTab(VerticalScroll):
             yield Static("", id="status_smu")
 
     def on_mount(self) -> None:
+        self._timer = None
+        self._watch = None
+        self._last_ac = None
         self.refresh_status()
-        self.set_interval(1.5, self.refresh_status)
+
+    def on_show(self) -> None:
+        self.refresh_status()
+        self._reschedule()
+
+    def on_hide(self) -> None:
+        self._stop_timers()
+
+    def _stop_timers(self) -> None:
+        for t in (self._timer, self._watch):
+            if t is not None:
+                t.stop()
+        self._timer = None
+        self._watch = None
+
+    def _reschedule(self) -> None:
+        from Assets.tui.helpers import on_ac
+        self._stop_timers()
+        self._last_ac = on_ac()
+        self._watch = self.set_interval(2.0, self._check_power)
+        if cfg.get("Settings", "ReApply", "0") == "1":
+            interval = cfg.parse_interval(cfg.get("Settings", "Time", "3"))
+            self._timer = self.set_interval(interval, self.refresh_status)
+
+    def _check_power(self) -> None:
+        from Assets.tui.helpers import on_ac
+        ac = on_ac()
+        if ac != self._last_ac:
+            self._last_ac = ac
+            self.refresh_status()
 
     @work(thread=True, exclusive=True, group="status_tab")
     def refresh_status(self) -> None:
@@ -511,16 +557,16 @@ class StatusTab(VerticalScroll):
         on_ac = st.get("on_ac")
         loop = st.get("running_loop")
         automation = st.get("automation")
-        mode = _strip(st.get("mode") or "") or "none"
+        mode = _strip(st.get("mode") or "")
         interval = st.get("interval", "?")
         profile = cfg.get_loaded_preset()
 
         rows = ["Daemon         [green]Running[/]"]
         if profile:
-            rows.append(f"Preset profile {profile}")
+            rows.append(f"Profile        {profile}")
         rows += [
             f"Power source   {'AC' if on_ac else 'Battery'}",
-            f"Active preset  {mode}",
+            f"Active preset  {mode or '[dim]—[/]'}",
             f"Auto-reapply   {f'[green]ON[/] (every {interval}s)' if loop else '[dim]OFF[/]'}",
         ]
         if automation:
@@ -533,6 +579,9 @@ class StatusTab(VerticalScroll):
                 rows.append(f"  On Discharge {bat}")
         else:
             rows.append("Automations    [dim]OFF[/]")
+        resume = _strip(cfg.get("Automations", "OnResume", ""))
+        if resume:
+            rows.append(f"  On Resume    {resume}")
         panel.update("\n".join(rows))
 
         out = st.get("last_output") or ""
@@ -606,7 +655,7 @@ class SettingsTab(VerticalScroll):
             return
         clamped = cfg.get("Settings", "Time", "3")
         event.input.value = clamped
-        self.app.notify(f"Reapply interval set to {clamped}s.")
+        self.app.notify(f"Reapply interval set to {clamped}s.", title="Reapply")
         if cfg.get("Settings", "ReApply", "0") == "1":
             self._apply_reapply(True)
 
@@ -641,14 +690,15 @@ class SettingsTab(VerticalScroll):
                 return
 
         if not await ensure_sudo(self.app):
-            self.app.notify("Cancelled — administrator access not granted.", severity="warning")
+            self.app.notify("Cancelled — administrator access not granted.",
+                            title="Daemon", severity="warning")
             return
 
         fn = {"install": service.install_service,
               "restart": service.restart_service,
               "uninstall": service.uninstall_service}[kind]
         verb = {"install": "Installing", "restart": "Restarting", "uninstall": "Uninstalling"}[kind]
-        self.app.notify(f"{verb} daemon…")
+        self.app.notify(f"{verb} daemon…", title="Daemon")
         result = await asyncio.to_thread(fn)
         if kind != "uninstall" and result.get("ok"):
             await asyncio.to_thread(service.wait_for_daemon)
@@ -668,7 +718,8 @@ class SettingsTab(VerticalScroll):
         import asyncio
         from Assets.core.ipc import get_client
         if not get_client().ping():
-            self.app.notify("Daemon is not running — cannot detect hardware.", severity="warning")
+            self.app.notify("Daemon is not running — cannot detect hardware.",
+                            title="Hardware detection", severity="warning")
             return
         from Assets.core.hardware import detect
         await asyncio.to_thread(detect)
@@ -681,13 +732,15 @@ class SettingsTab(VerticalScroll):
         from Assets.core.ipc import get_client
         client = get_client()
         if not client.ping():
-            self.app.call_from_thread(self.app.notify, "Daemon is not running.", severity="warning")
+            self.app.call_from_thread(self.app.notify, "Daemon is not running.",
+                                      title="Reapply", severity="warning")
             return
         if on:
             result = client.apply_saved()
             if not result.get("ok"):
                 self.app.call_from_thread(
-                    self.app.notify, "Select a preset in the Power tab first.", severity="warning")
+                    self.app.notify, "Select a preset in the Premade Presets tab first.",
+                    title="Reapply", severity="warning")
         else:
             client.stop_loop()
 
