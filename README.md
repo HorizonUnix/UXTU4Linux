@@ -15,7 +15,7 @@ UXTU4Linux is a power management tool for **AMD Ryzen APUs and desktop CPUs** on
 - Custom Preset Editor with around 65 tunable parameters on APUs: power and temperature limits, VRM currents, clock targets, Curve Optimiser (all-core, iGPU and per-core), static OC and more
 - System settings in the same preset: power profile (the Linux equivalent of the Windows power mode), ASUS performance mode / GPU Eco / GPU MUX, and CCD affinity on dual-CCD chips
 - NVIDIA dGPU clock limits and core/memory offsets via nvidia-smi and NVML
-- Automations: switch presets automatically on AC/battery changes and on resume from suspend
+- Automations: switch presets automatically on AC/battery changes and re-apply on resume from sleep, suspend or hibernation
 - Auto-reapply on a timer, so competing power management tools can't silently undo your settings
 - Built-in updater that keeps your config and custom presets across updates
 

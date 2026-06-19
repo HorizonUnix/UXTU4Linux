@@ -1,3 +1,48 @@
+## [0.9.0]
+
+Starting from v0.9.0, we reimagine how you interact with UXTU4Linux. The entire interface is new, built from the ground up on Textual: a fast, modern terminal app you drive with the mouse or the keyboard. Tuning your Ryzen CPU has never felt this effortless on Linux.
+
+Everything now lives in one window, organized into tabs you can reach in an instant. Apply a preset, craft your own, set up automations, and watch your CPU's live status, all without leaving the screen.
+
+> **Updating from v0.8.x?** v0.9.0 adds a new dependency (Textual), so the interface won't start until your virtual environment has it. The easiest path is to re-run the installer, which now installs the requirements for you and keeps your settings and custom presets:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/HorizonUnix/UXTU4Linux/main/install.sh | bash
+```
+
+Prefer not to reinstall? Add the dependencies to the existing environment by hand, then restart the daemon:
+
+```bash
+/opt/uxtu4linux/venv/bin/pip install textual pyzmq
+sudo systemctl restart uxtu4linux.service
+```
+
+### A brand-new interface
+- **Tabs, not menus.** Home, Premade Presets, Custom Presets, Automations, System Info, Status and Settings, each one a keystroke or a click away.
+- **Mouse and keyboard.** Point and click, or fly through with number keys. Whatever feels natural.
+- **Themes.** Choose a look that suits you. Your choice is remembered.
+- **A guided first run.** A three-step setup wizard installs the background service and detects your hardware on its own, then gets out of your way.
+
+### Presets, refined
+- **Premade presets** apply in a single tap, each with a clear description of what it does.
+- **The Custom Preset Editor, rebuilt** as a live form: flip a switch, type a value, apply or save. Sections appear only for what your chip actually supports.
+
+### Automations that just work
+- Switch presets automatically between AC and battery, and re-apply on resume from sleep, suspend or hibernation.
+- Plain-language explanations throughout, so it's clear what every option does before you turn it on.
+
+### Live status, at a glance
+- A dedicated Status tab shows the active preset, your automations, the power source, and the exact result of the last apply. It refreshes as things change, and follows your reapply interval.
+
+### Rock-solid by design
+- The app and the background daemon now stay perfectly in step. Every change you make is reflected instantly and accurately.
+- Updating never touches your settings. Re-running the installer keeps your configuration and your custom presets exactly as they were.
+
+### Under the hood
+- A ground-up reorganization of the codebase for a cleaner, faster and more maintainable foundation.
+
+**Full changelog:** https://github.com/HorizonUnix/UXTU4Linux/compare/0.8.1...0.9.0
+
 ## [0.8.1]
 
 A small follow-up to v0.8.0 with quality-of-life polish and fixes.

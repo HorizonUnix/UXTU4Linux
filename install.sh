@@ -190,31 +190,27 @@ install_files() {
     sudo mkdir -p "$INSTALL_DIR"
     sudo chown "$CURRENT_USER:$CURRENT_GROUP" "$INSTALL_DIR"
 
+    local bak="$TMP_DIR/preserve"
+    mkdir -p "$bak"
+    if [[ -f "$SRC_DIR/Assets/config.ini" ]]; then
+        cp "$SRC_DIR/Assets/config.ini" "$bak/"
+        info "Preserving existing settings."
+    fi
+    if [[ -f "$SRC_DIR/Assets/custom.json" ]]; then
+        cp "$SRC_DIR/Assets/custom.json" "$bak/"
+        info "Preserving custom presets."
+    fi
+
     sudo rm -rf "$SRC_DIR"
     cp -r "$src" "$SRC_DIR"
-    ok "Installed to $SRC_DIR"
-}
 
-patch_entry_point() {
-    info "Configuring entry point..."
-    [[ -f "$SRC_DIR/UXTU4Linux.py" ]] || die "UXTU4Linux.py not found in $SRC_DIR"
-    sed -i "1s|.*|#!${VENV_PYTHON}|" "$SRC_DIR/UXTU4Linux.py" || die "Failed to patch shebang."
-    python3 - "$SRC_DIR/UXTU4Linux.py" "${VENV_PYTHON}" <<'PYEOF' || die "Guard injection failed."
-import sys
-path, venv = sys.argv[1], sys.argv[2]
-guard = (
-    "import sys as _sys, os as _os\n"
-    f"_venv = '{venv}'\n"
-    "if _os.path.isfile(_venv) and _os.path.realpath(_sys.executable) != _os.path.realpath(_venv):\n"
-    "    _os.execv(_venv, [_venv] + _sys.argv)\n"
-)
-with open(path, "r") as f:
-    lines = f.readlines()
-lines.insert(1, guard)
-with open(path, "w") as f:
-    f.writelines(lines)
-PYEOF
-    ok "Entry point configured."
+    if [[ -f "$bak/config.ini" ]]; then
+        cp "$bak/config.ini" "$SRC_DIR/Assets/config.ini"
+    fi
+    if [[ -f "$bak/custom.json" ]]; then
+        cp "$bak/custom.json" "$SRC_DIR/Assets/custom.json"
+    fi
+    ok "Installed to $SRC_DIR"
 }
 
 find_python_executable() {
@@ -242,13 +238,9 @@ setup_venv() {
 
     "$VENV_PYTHON" -m pip install --quiet --no-cache-dir --upgrade pip &>/dev/null || true
 
-    if [[ -f "$SRC_DIR/requirements.txt" ]]; then
-        "$VENV_PYTHON" -m pip install --quiet --no-cache-dir -r "$SRC_DIR/requirements.txt" &>/dev/null \
-            || die "Failed to install Python requirements."
-    else
-        "$VENV_PYTHON" -m pip install --quiet --no-cache-dir pyzmq textual &>/dev/null \
-            || die "Failed to install pyzmq, textual."
-    fi
+    [[ -f "$SRC_DIR/requirements.txt" ]] || die "requirements.txt not found in $SRC_DIR"
+    "$VENV_PYTHON" -m pip install --quiet --no-cache-dir -r "$SRC_DIR/requirements.txt" &>/dev/null \
+        || die "Failed to install Python requirements."
     ok "Python environment ready."
 }
 
@@ -416,7 +408,6 @@ main() {
     install_deps "$pm"
     download_release
     install_files
-    patch_entry_point
     setup_venv
     set_permissions
     install_wrapper
