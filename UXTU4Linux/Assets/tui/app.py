@@ -117,12 +117,12 @@ class U4LApp(App):
         self._check_size(event.size)
 
     def _check_size(self, size) -> None:
-        too_small = size.width < 40 or size.height < 20
+        too_small = size.width < 50 or size.height < 25
         self.query_one("#too_small", Static).display = too_small
         self.query_one("#banner").display = not too_small
         self.query_one("#tabs").display = not too_small
         if too_small:
-            self.query_one("#too_small", Static).update("Terminal too small — minimum is 40×20.")
+            self.query_one("#too_small", Static).update("Terminal too small — minimum is 50×25.")
             return
         self.query_one("#banner", Static).update(
             banner.WORDMARK if size.width < 62 else banner.BANNER)
