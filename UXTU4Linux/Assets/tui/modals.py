@@ -29,6 +29,10 @@ class FatalErrorModal(ModalScreen):
         with Vertical(id="fatal_dialog"):
             yield Label("Cannot start UXTU4Linux", classes="dialog_title")
             yield Static(self._message, id="fatal_message")
+            if self._guide_url:
+                yield Static(
+                    f"Install guide: [link='{self._guide_url}']{self._guide_url}[/link]",
+                    id="fatal_guide_link")
             with Horizontal(id="dialog_buttons"):
                 if self._guide_url:
                     yield Button("Install guide", id="fatal_guide", variant="primary")

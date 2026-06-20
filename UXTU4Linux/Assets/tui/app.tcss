@@ -280,6 +280,11 @@ ConfirmModal, PresetPickerModal, DaemonLogModal, HardwareInfoModal, FatalErrorMo
     margin: 1 0;
 }
 
+#fatal_guide_link {
+    height: auto;
+    margin-bottom: 1;
+}
+
 #hw_dialog {
     width: 70;
     max-width: 90%;
