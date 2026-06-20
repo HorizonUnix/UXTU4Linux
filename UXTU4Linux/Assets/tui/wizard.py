@@ -41,7 +41,8 @@ class SetupWizard(ModalScreen):
                         "Press Install / enable daemon below. You'll be asked for your "
                         "password once, then the service starts automatically and runs on "
                         "every boot.",
-                        classes="setup_body")
+                        id="setup_daemon_body", classes="setup_body")
+                    yield Static("", id="manual_cmd")
                     yield Static("", id="setup_daemon_status")
                     with Horizontal(classes="setup_buttons"):
                         yield Button("Install / enable daemon", id="setup_install", variant="primary")
@@ -60,6 +61,8 @@ class SetupWizard(ModalScreen):
                         yield Button("Finish", id="setup_finish", disabled=True, variant="success")
 
     def on_mount(self) -> None:
+        self._manual = False
+        self.query_one("#manual_cmd", Static).display = False
         self._set_step(1)
 
     def _set_step(self, n: int) -> None:
@@ -71,9 +74,13 @@ class SetupWizard(ModalScreen):
         if bid == "setup_begin":
             self.query_one(ContentSwitcher).current = "daemon"
             self._set_step(2)
-            self._refresh_daemon()
+            self._enter_daemon_step()
         elif bid == "setup_install":
-            self._install_daemon()
+            if self._manual:
+                self.query_one("#setup_daemon_status", Static).update("Checking…")
+                self._refresh_daemon()
+            else:
+                self._install_daemon()
         elif bid == "setup_daemon_continue":
             self.query_one(ContentSwitcher).current = "hardware"
             self._set_step(3)
@@ -85,6 +92,26 @@ class SetupWizard(ModalScreen):
         elif bid == "setup_finish":
             cfg.save()
             self.app.exit("setup-done")
+
+    def _enter_daemon_step(self) -> None:
+        from Assets.daemon.service import has_systemctl, manual_start_command
+        self._manual = not has_systemctl()
+        cmd = self.query_one("#manual_cmd", Static)
+        if self._manual:
+            self.query_one("#setup_daemon_body", Static).update(
+                "UXTU4Linux uses a small background service to talk to your CPU. "
+                "It's the only part that needs administrator access, so the app "
+                "itself never has to run as root.\n\n"
+                "systemd isn't available on this system, so the service can't be "
+                "installed automatically. Start the daemon yourself in a terminal "
+                "with administrator access:")
+            cmd.update(manual_start_command())
+            cmd.display = True
+            self.query_one("#setup_install", Button).label = "Check connection"
+        else:
+            cmd.display = False
+            self.query_one("#setup_install", Button).label = "Install / enable daemon"
+        self._refresh_daemon()
 
     @work(group="setup_install")
     async def _install_daemon(self) -> None:

@@ -262,7 +262,7 @@ SetupWizard {
     width: 14;
 }
 
-ConfirmModal, PresetPickerModal, DaemonLogModal, HardwareInfoModal, FatalErrorModal, StalePathModal {
+ConfirmModal, PresetPickerModal, DaemonLogModal, HardwareInfoModal, FatalErrorModal, StalePathModal, ManualDaemonModal {
     align: center middle;
 }
 
@@ -358,6 +358,28 @@ ConfirmModal, PresetPickerModal, DaemonLogModal, HardwareInfoModal, FatalErrorMo
 }
 
 #update_status {
+    width: 1fr;
+    height: auto;
+    margin-bottom: 1;
+    padding: 0 1;
+}
+
+#manual_msg, #manual_hint {
+    width: 1fr;
+    height: auto;
+    padding: 0 1;
+}
+
+#manual_cmd {
+    width: 1fr;
+    height: auto;
+    margin: 1 0;
+    padding: 0 1;
+    background: $boost;
+    color: $text;
+}
+
+#manual_status {
     width: 1fr;
     height: auto;
     margin-bottom: 1;

@@ -167,6 +167,54 @@ class StalePathModal(ModalScreen):
         self.dismiss()
 
 
+class ManualDaemonModal(ModalScreen):
+    BINDINGS = [("escape", "close", "Close")]
+
+    def compose(self) -> ComposeResult:
+        from Assets.daemon.service import manual_start_command
+        with Vertical(id="dialog"):
+            yield Label("Start the daemon manually", classes="dialog_title")
+            yield Static(
+                "systemd isn't available on this system, so UXTU4Linux can't install "
+                "the daemon as a background service. You can still use everything — "
+                "you just need to start the daemon yourself in a terminal with "
+                "administrator access:",
+                id="manual_msg")
+            yield Static(manual_start_command(), id="manual_cmd")
+            yield Static(
+                "Leave that terminal open, then press Check connection. To start it "
+                "automatically on boot, add the command to your init system.",
+                id="manual_hint")
+            yield Static("", id="manual_status")
+            with Horizontal(id="dialog_buttons"):
+                yield Button("Check connection", id="manual_check", variant="primary")
+                yield Button("Close", id="manual_close")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "manual_close":
+            self.dismiss()
+        else:
+            self.query_one("#manual_status", Static).update("Checking…")
+            self._check()
+
+    @work(thread=True, exclusive=True)
+    def _check(self) -> None:
+        from Assets.core.ipc import get_client
+        running = get_client().ping()
+        self.app.call_from_thread(self._render_result, running)
+
+    def _render_result(self, running: bool) -> None:
+        if running:
+            self.query_one("#manual_status", Static).update(
+                "[green]Connected — the daemon is running.[/]")
+        else:
+            self.query_one("#manual_status", Static).update(
+                "[yellow]Not reachable yet. Make sure the command above is still running.[/]")
+
+    def action_close(self) -> None:
+        self.dismiss()
+
+
 class ConfirmModal(ModalScreen[bool]):
     BINDINGS = [("escape", "cancel", "Cancel")]
 

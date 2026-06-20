@@ -29,7 +29,7 @@ def prime_sudo(password: str) -> bool:
     ).returncode == 0
 
 
-def _has_systemctl() -> bool:
+def has_systemctl() -> bool:
     global _systemctl_available
     if _systemctl_available is None:
         _systemctl_available = subprocess.call(
@@ -72,6 +72,10 @@ def _python() -> str:
     return cfg.VENV_PYTHON if os.path.isfile(cfg.VENV_PYTHON) else sys.executable
 
 
+def manual_start_command() -> str:
+    return f"sudo {_python()} {_daemon_script()}"
+
+
 def _render_unit() -> str:
     return (
         "[Unit]\n"
@@ -94,7 +98,7 @@ def _sudo_run(*args: str) -> int:
 
 
 def _systemctl(*args: str) -> int:
-    if not _has_systemctl():
+    if not has_systemctl():
         return 1
     return _sudo_run("systemctl", *args)
 
@@ -125,10 +129,10 @@ def wait_for_daemon(timeout: float = 10.0, interval: float = 0.3) -> bool:
 
 
 def install_service() -> dict:
-    if not _has_systemctl():
-        return {"ok": False,
+    if not has_systemctl():
+        return {"ok": False, "manual": True,
                 "error": f"systemctl is not available. Start the daemon manually:\n"
-                         f"sudo {_python()} {_daemon_script()}"}
+                         f"{manual_start_command()}"}
     if not sudo_available():
         return {"ok": False, "error": "Administrator access is required."}
     if not _ensure_venv():
@@ -155,7 +159,7 @@ def uninstall_service() -> dict:
 
 
 def service_running() -> bool:
-    if not _has_systemctl():
+    if not has_systemctl():
         return False
     return subprocess.call(
         ["systemctl", "is-active", "--quiet", SERVICE_NAME],
@@ -164,7 +168,7 @@ def service_running() -> bool:
 
 
 def service_enabled() -> bool:
-    if not _has_systemctl():
+    if not has_systemctl():
         return False
     return subprocess.call(
         ["systemctl", "is-enabled", "--quiet", SERVICE_NAME],
@@ -181,7 +185,7 @@ def restart_service() -> dict:
 
 
 def read_logs(lines: int = 200) -> str:
-    if not _has_systemctl():
+    if not has_systemctl():
         return "journalctl is not available on this system."
     try:
         out = subprocess.run(

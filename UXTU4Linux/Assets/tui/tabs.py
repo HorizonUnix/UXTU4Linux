@@ -123,22 +123,24 @@ class PowerTab(VerticalScroll):
 
 
 _HELP = (
-    "Automations let UXTU4Linux switch presets for you, so you don't have to think "
-    "about it.\n"
+    "Automations keep the right preset applied on their own, so you can set things up "
+    "once and forget about them.\n"
     "\n"
     "[b]Override[/b]\n"
-    "Turn this on to apply a different preset depending on whether you're plugged in "
-    "or on battery:\n"
-    "  • Battery Charge    — applied when the charger is plugged in\n"
-    "  • Battery Discharge — applied when you unplug the charger\n"
-    "The daemon watches your power source and swaps presets automatically the moment "
-    "it changes. Leave a slot on None to keep your current preset for that state. "
-    "You'll need at least one slot set before Override can turn on.\n"
+    "Switch presets automatically based on whether you're plugged in or running on "
+    "battery. Choose a preset for each state:\n"
+    "\n"
+    "  Battery Charge    applies when you plug in the charger\n"
+    "  Battery Discharge applies when you unplug it\n"
+    "\n"
+    "UXTU4Linux watches your power source and switches the moment it changes. Leave a "
+    "slot on None to keep whatever preset is already active for that state. You'll need "
+    "at least one slot set before you can turn Override on.\n"
     "\n"
     "[b]System Resume[/b]\n"
-    "Pick a preset to re-apply each time your machine wakes from sleep, suspend or "
-    "hibernation — handy because some hardware forgets its tuning after sleeping. "
-    "This one works on its own; Override doesn't need to be on."
+    "Re-applies the preset you choose every time your machine wakes from sleep, suspend "
+    "or hibernation. It's worth setting because some hardware forgets its tuning after "
+    "sleeping. This works on its own and doesn't need Override turned on."
 )
 
 
@@ -669,7 +671,13 @@ class SettingsTab(VerticalScroll):
                 ConfirmModal("Reset all settings and custom presets? This cannot be undone."),
                 lambda ok: self.app.exit("reset") if ok else None)
         elif bid == "daemon_install":
-            self._daemon_action("install")
+            from Assets.daemon.service import has_systemctl
+            if not has_systemctl():
+                from Assets.tui.modals import ManualDaemonModal
+                self.app.push_screen(ManualDaemonModal(),
+                                     lambda _=None: self._refresh_daemon_status())
+            else:
+                self._daemon_action("install")
         elif bid == "daemon_restart":
             self._daemon_action("restart")
         elif bid == "daemon_uninstall":
@@ -746,9 +754,13 @@ class SettingsTab(VerticalScroll):
 
     @work(thread=True, exclusive=True, group="settings_status")
     def _refresh_daemon_status(self) -> None:
-        from Assets.daemon.service import service_running, service_enabled, _has_systemctl
-        if not _has_systemctl():
-            text = "Service: (no systemctl)"
+        from Assets.daemon.service import service_running, service_enabled, has_systemctl
+        if not has_systemctl():
+            from Assets.core.ipc import get_client
+            if get_client().ping():
+                text = "Service: [green]Running[/] ([dim]started manually[/])"
+            else:
+                text = "Service: [dim]Not running[/] ([dim]no systemctl — start manually[/])"
         elif service_running():
             boot = "enabled" if service_enabled() else "disabled"
             text = f"Service: [green]Running[/] ([dim]start on boot: {boot}[/])"
