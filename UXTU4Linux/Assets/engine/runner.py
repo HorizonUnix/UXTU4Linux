@@ -457,13 +457,14 @@ def _skin_scale(arg_name: str, value: int) -> int:
     return value * 256 if "skin" in arg_name else value
 
 
-def _nvml_set_offsets(core_offset: int, mem_offset: int, lines: list[str]) -> None:
+def _nvml_apply(max_clk: int, core_offset: int, mem_offset: int,
+                power_limit: int, lines: list[str]) -> None:
     import ctypes
 
     try:
         lib = ctypes.CDLL("libnvidia-ml.so.1")
     except OSError:
-        lines.append("nvidia offsets -> libnvidia-ml.so.1 not found")
+        lines.append("nvidia-clocks -> libnvidia-ml.so.1 not found")
         return
 
     NVML_ERROR_NOT_SUPPORTED = 3
@@ -493,14 +494,50 @@ def _nvml_set_offsets(core_offset: int, mem_offset: int, lines: list[str]) -> No
 
     init_rc = nvmlInit()
     if init_rc != 0:
-        lines.append(f"nvidia offsets -> nvmlInit failed (rc={init_rc})")
+        lines.append(f"nvidia-clocks -> nvmlInit failed (rc={init_rc})")
         return
 
     dev = ctypes.c_void_p()
     if nvmlGetDev(0, ctypes.byref(dev)) != 0:
-        lines.append("nvidia offsets -> nvmlDeviceGetHandleByIndex failed")
+        lines.append("nvidia-clocks -> nvmlDeviceGetHandleByIndex failed")
         nvmlShutdown()
         return
+
+    if power_limit > 0:
+        setPower = getattr(lib, "nvmlDeviceSetPowerManagementLimit", None)
+        if setPower is None:
+            lines.append("nvidia power-limit -> not supported by driver")
+        else:
+            setPower.restype = ctypes.c_int
+            setPower.argtypes = [ctypes.c_void_p, ctypes.c_uint]
+            rc = setPower(dev, power_limit * 1000)
+            if rc == 0:
+                lines.append(f"nvidia power-limit -> {power_limit} W")
+            elif rc == NVML_ERROR_NOT_SUPPORTED:
+                lines.append("nvidia power-limit -> not supported by this GPU")
+            else:
+                lines.append(f"nvidia power-limit -> failed to set {power_limit} W (rc={rc})")
+
+    if max_clk >= 4000:
+        resetClk = getattr(lib, "nvmlDeviceResetGpuLockedClocks", None)
+        if resetClk is None:
+            lines.append("nvidia max-clock -> reset not supported by driver")
+        else:
+            resetClk.restype = ctypes.c_int
+            resetClk.argtypes = [ctypes.c_void_p]
+            rc = resetClk(dev)
+            lines.append("nvidia max-clock -> reset" if rc == 0
+                         else f"nvidia max-clock -> reset failed (rc={rc})")
+    else:
+        lockClk = getattr(lib, "nvmlDeviceSetGpuLockedClocks", None)
+        if lockClk is None:
+            lines.append("nvidia max-clock -> lock not supported by driver")
+        else:
+            lockClk.restype = ctypes.c_int
+            lockClk.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint]
+            rc = lockClk(dev, 0, max_clk)
+            lines.append(f"nvidia max-clock -> {max_clk} MHz" if rc == 0
+                         else f"nvidia max-clock -> failed to set {max_clk} MHz (rc={rc})")
 
     pairs = [(NVML_CLOCK_GRAPHICS, core_offset, "core"), (NVML_CLOCK_MEM, mem_offset, "mem")]
     used_modern = False
@@ -541,42 +578,20 @@ def _nvml_set_offsets(core_offset: int, mem_offset: int, lines: list[str]) -> No
 
 
 def _apply_nvidia(packed: str, lines: list[str]) -> None:
-    import shutil
-    import subprocess
-
     parts = packed.split(",")
-    if len(parts) != 3:
+    if len(parts) not in (3, 4):
         lines.append("nvidia-clocks -> invalid format")
         return
     try:
         max_clk = int(parts[0])
         core_offset = int(parts[1])
         mem_offset = int(parts[2])
+        power_limit = int(parts[3]) if len(parts) == 4 else 0
     except ValueError:
         lines.append("nvidia-clocks -> invalid values")
         return
 
-    smi = shutil.which("nvidia-smi")
-    if not smi:
-        lines.append("nvidia-clocks -> nvidia-smi not found")
-        return
-
-    if max_clk >= 4000:
-        proc = subprocess.run([smi, "-rgc"], capture_output=True, text=True)
-        if proc.returncode != 0:
-            err = (proc.stderr or proc.stdout or "unknown error").strip()
-            lines.append(f"nvidia max-clock -> reset failed: {err}")
-        else:
-            lines.append("nvidia max-clock -> reset")
-    else:
-        proc = subprocess.run([smi, "-lgc", f"0,{max_clk}"], capture_output=True, text=True)
-        if proc.returncode != 0:
-            err = (proc.stderr or proc.stdout or "unknown error").strip()
-            lines.append(f"nvidia max-clock -> failed to set {max_clk} MHz: {err}")
-        else:
-            lines.append(f"nvidia max-clock -> {max_clk} MHz")
-
-    _nvml_set_offsets(core_offset, mem_offset, lines)
+    _nvml_apply(max_clk, core_offset, mem_offset, power_limit, lines)
 
 
 def _apply_system(name: str, raw: int, lines: list[str]) -> None:

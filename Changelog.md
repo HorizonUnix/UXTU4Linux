@@ -1,3 +1,23 @@
+## [0.9.1]
+
+### NVIDIA Tuning
+
+* NVIDIA tuning has been fully migrated to NVML and no longer relies on the `nvidia-smi` command. GPU power limit and clock lock controls now call the NVIDIA driver directly through NVML alongside the core and memory offsets that already use it.
+
+* **Desktop NVIDIA GPU power limit support.** You can now set a power limit on desktop NVIDIA GPUs. The control reads your GPU's actual power limit range and current value from NVML, then adjusts the minimum, maximum, and current values to match your hardware. On laptop GPUs, where power limits are controlled by Dynamic Boost and cannot be adjusted (NVML reports `NOT_SUPPORTED`), the control is automatically hidden.
+
+* **Wider GPU clock offset ranges.** Core and memory clock offsets now support values from -1000 MHz to +4000 MHz.
+
+### New NVIDIA ROP Check
+
+* **NVIDIA ROP check for RTX 4000 and 5000 series GPUs.** On startup, UXTU4Linux now reads your GPU's actual ROP count and warns you if it is lower than the expected value for your model.
+
+### Premade Presets
+
+* **See the command.** Selecting a premade preset now displays the exact command being applied in a dedicated output box, so you can always see what is being sent to your CPU.
+
+**Full changelog:** https://github.com/HorizonUnix/UXTU4Linux/compare/0.9.0...0.9.1
+
 ## [0.9.0]
 
 Starting from v0.9.0, we reimagine how you interact with UXTU4Linux. The entire interface is new, built from the ground up on Textual: a fast, modern terminal app you drive with the mouse or the keyboard. Tuning your Ryzen CPU has never felt this effortless on Linux.

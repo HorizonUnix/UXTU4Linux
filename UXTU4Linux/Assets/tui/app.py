@@ -72,6 +72,7 @@ class U4LApp(App):
             from Assets.tui.modals import FatalErrorModal
             self.push_screen(FatalErrorModal(self._dep_error))
             return
+        self._startup_rop_check()
         if self._first_run:
             from Assets.tui.wizard import SetupWizard
             self.push_screen(SetupWizard())
@@ -184,6 +185,23 @@ class U4LApp(App):
             return
         self._warned_offline = False
         line.display = False
+
+    @work(thread=True, exclusive=True, group="startup_rop")
+    def _startup_rop_check(self) -> None:
+        try:
+            from Assets.system import nvcheck
+            defective = nvcheck.check_rops()
+        except Exception:
+            return
+        for name, actual, expected in defective:
+            self.call_from_thread(self._warn_rop, name, actual, expected)
+
+    def _warn_rop(self, name: str, actual: int, expected: int) -> None:
+        self.notify(
+            f"ROP count is lower than expected on {name} "
+            f"({actual} ROPs out of {expected} ROPs)",
+            title="NVIDIA GPU Warning", severity="warning", timeout=10,
+        )
 
     @work(thread=True, exclusive=True, group="startup_update")
     def _startup_update_check(self) -> None:

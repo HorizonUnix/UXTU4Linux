@@ -298,15 +298,21 @@ _NV_FIELDS: list[dict[str, Any]] = [
     },
     {
         "key": "nv_core_offset", "label": "GPU Core Offset", "arg": "--_nv",
-        "unit": "MHz", "default": 0, "min": -500, "max": 2000, "step": 5,
+        "unit": "MHz", "default": 0, "min": -1000, "max": 4000, "step": 5,
         "enabled": False, "section": NV_SECTION, "nvidia_only": True,
         "hint": "Controls the clock offset for your NVIDIA GPU's core clock",
     },
     {
         "key": "nv_mem_offset", "label": "GPU Mem Offset", "arg": "--_nv",
-        "unit": "MHz", "default": 0, "min": -900, "max": 2000, "step": 5,
+        "unit": "MHz", "default": 0, "min": -1000, "max": 4000, "step": 5,
         "enabled": False, "section": NV_SECTION, "nvidia_only": True,
         "hint": "Controls the clock offset for your NVIDIA GPU's VRAM clock",
+    },
+    {
+        "key": "nv_power_limit", "label": "GPU Power Limit", "arg": "--_nv",
+        "unit": "W", "default": 0, "min": 0, "max": 700, "step": 1,
+        "enabled": False, "section": NV_SECTION, "nvidia_only": True,
+        "hint": "Controls the power limit for your NVIDIA GPU",
     },
 ]
 
@@ -429,9 +435,148 @@ _nvidia_available: bool | None = None
 def has_nvidia() -> bool:
     global _nvidia_available
     if _nvidia_available is None:
-        import shutil
-        _nvidia_available = shutil.which("nvidia-smi") is not None
+        _nvidia_available = _detect_nvidia()
     return _nvidia_available
+
+
+def _detect_nvidia() -> bool:
+    import ctypes
+    try:
+        lib = ctypes.CDLL("libnvidia-ml.so.1")
+    except OSError:
+        return False
+    lib.nvmlInit_v2.restype = ctypes.c_int
+    lib.nvmlShutdown.restype = ctypes.c_int
+    if lib.nvmlInit_v2() != 0:
+        return False
+    try:
+        get_count = getattr(lib, "nvmlDeviceGetCount_v2", None) or getattr(lib, "nvmlDeviceGetCount", None)
+        if get_count is None:
+            return False
+        get_count.restype = ctypes.c_int
+        get_count.argtypes = [ctypes.POINTER(ctypes.c_uint)]
+        count = ctypes.c_uint(0)
+        if get_count(ctypes.byref(count)) != 0:
+            return False
+        return count.value > 0
+    finally:
+        lib.nvmlShutdown()
+
+
+_nv_power_supported: bool | None = None
+
+
+def _nvidia_power_limit_supported() -> bool:
+    global _nv_power_supported
+    if _nv_power_supported is None:
+        _nv_power_supported = _detect_nv_power_limit()
+    return _nv_power_supported
+
+
+def _detect_nv_power_limit() -> bool:
+    if not has_nvidia():
+        return False
+    import ctypes
+    try:
+        lib = ctypes.CDLL("libnvidia-ml.so.1")
+    except OSError:
+        return False
+    lib.nvmlInit_v2.restype = ctypes.c_int
+    lib.nvmlShutdown.restype = ctypes.c_int
+    if lib.nvmlInit_v2() != 0:
+        return False
+    try:
+        get_dev = lib.nvmlDeviceGetHandleByIndex_v2
+        get_dev.restype = ctypes.c_int
+        get_dev.argtypes = [ctypes.c_uint, ctypes.POINTER(ctypes.c_void_p)]
+        dev = ctypes.c_void_p()
+        if get_dev(0, ctypes.byref(dev)) != 0:
+            return False
+        mode = getattr(lib, "nvmlDeviceGetPowerManagementMode", None)
+        if mode is None:
+            return False
+        mode.restype = ctypes.c_int
+        mode.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint)]
+        enabled = ctypes.c_uint(0)
+        return mode(dev, ctypes.byref(enabled)) == 0 and enabled.value == 1
+    finally:
+        lib.nvmlShutdown()
+
+
+_nv_power_info_cached = False
+_nv_power_info: tuple[int, int, int] | None = None
+
+
+def _nv_power_constraints() -> tuple[int, int, int] | None:
+    global _nv_power_info, _nv_power_info_cached
+    if not _nv_power_info_cached:
+        _nv_power_info = _read_nv_power_constraints()
+        _nv_power_info_cached = True
+    return _nv_power_info
+
+
+def _read_nv_power_constraints() -> tuple[int, int, int] | None:
+    if not has_nvidia():
+        return None
+    import ctypes
+    try:
+        lib = ctypes.CDLL("libnvidia-ml.so.1")
+    except OSError:
+        return None
+    lib.nvmlInit_v2.restype = ctypes.c_int
+    lib.nvmlShutdown.restype = ctypes.c_int
+    if lib.nvmlInit_v2() != 0:
+        return None
+    try:
+        get_dev = lib.nvmlDeviceGetHandleByIndex_v2
+        get_dev.restype = ctypes.c_int
+        get_dev.argtypes = [ctypes.c_uint, ctypes.POINTER(ctypes.c_void_p)]
+        dev = ctypes.c_void_p()
+        if get_dev(0, ctypes.byref(dev)) != 0:
+            return None
+        cons = getattr(lib, "nvmlDeviceGetPowerManagementLimitConstraints", None)
+        if cons is None:
+            return None
+        cons.restype = ctypes.c_int
+        cons.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint)]
+        lo = ctypes.c_uint(0)
+        hi = ctypes.c_uint(0)
+        if cons(dev, ctypes.byref(lo), ctypes.byref(hi)) != 0:
+            return None
+        min_w = lo.value // 1000
+        max_w = hi.value // 1000
+
+        def _read(fn_name: str) -> int | None:
+            fn = getattr(lib, fn_name, None)
+            if fn is None:
+                return None
+            fn.restype = ctypes.c_int
+            fn.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint)]
+            v = ctypes.c_uint(0)
+            return v.value // 1000 if fn(dev, ctypes.byref(v)) == 0 else None
+
+        current = _read("nvmlDeviceGetPowerManagementLimit")
+        if current is None:
+            current = _read("nvmlDeviceGetPowerManagementDefaultLimit")
+        if current is None:
+            current = max_w
+        return (min_w, max_w, current)
+    finally:
+        lib.nvmlShutdown()
+
+
+def _apply_nv_power_range(fields: list[dict]) -> None:
+    info = _nv_power_constraints()
+    if not info:
+        return
+    min_w, max_w, current_w = info
+    for f in fields:
+        if f["key"] == "nv_power_limit":
+            f["min"] = min_w
+            f["max"] = max_w
+            f["default"] = current_w
+            f["value"] = current_w
+            break
 
 
 _sys_support: dict[str, bool] = {}
@@ -461,7 +606,7 @@ def _supported_field_keys(family: str, fields: list[dict]) -> set[str]:
     supported = set()
     for f in fields:
         if f.get("nvidia_only"):
-            if nv:
+            if nv and (f["key"] != "nv_power_limit" or _nvidia_power_limit_supported()):
                 supported.add(f["key"])
             continue
         if f.get("system_check"):
@@ -591,7 +736,8 @@ def build_args(fields: list[dict], cpu_type: str = "") -> str:
         max_clk = nv_vals.get("nv_max_clk", 4000)
         core = nv_vals.get("nv_core_offset", 0)
         mem = nv_vals.get("nv_mem_offset", 0)
-        parts.append(f"--nvidia-clocks={max_clk},{core},{mem}")
+        power = nv_vals.get("nv_power_limit", 0)
+        parts.append(f"--nvidia-clocks={max_clk},{core},{mem},{power}")
     return " ".join(parts)
 
 
@@ -603,6 +749,7 @@ def default_fields(include_ccd2: bool = True) -> list[dict]:
         d = dict(f)
         d["value"] = f["default"]
         fields.append(d)
+    _apply_nv_power_range(fields)
     return fields
 
 
@@ -614,6 +761,7 @@ def default_dt_fields(include_ccd2: bool = True) -> list[dict]:
         d = dict(f)
         d["value"] = f["default"]
         fields.append(d)
+    _apply_nv_power_range(fields)
     return fields
 
 

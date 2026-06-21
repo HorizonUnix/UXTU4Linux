@@ -81,6 +81,20 @@ PowerTab {
     margin: 1;
 }
 
+#preset_command {
+    height: auto;
+    width: 1fr;
+    padding: 1 2;
+    margin-bottom: 1;
+    background: $boost;
+    color: $text;
+    border: round $panel-lighten-1;
+}
+
+#preset_command_note {
+    margin-bottom: 0;
+}
+
 .row {
     height: auto;
     padding: 0 1;
@@ -202,7 +216,12 @@ StatusTab {
 
 #status_smu {
     height: auto;
-    padding: 0 2;
+    width: 1fr;
+    margin: 1 2 0 2;
+    padding: 1 2;
+    background: $boost;
+    color: $text;
+    border: round $panel-lighten-1;
 }
 
 SetupWizard {

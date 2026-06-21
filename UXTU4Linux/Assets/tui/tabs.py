@@ -62,6 +62,13 @@ class PowerTab(VerticalScroll):
                     yield Button(name, id=f"pbtn-{name}",
                                  classes=f"preset_btn {_COLOR.get(name, '')}".strip())
         yield Static("", id="preset_detail")
+        with Vertical(classes="settings_card", id="preset_command_card"):
+            yield Static("UXTU Command Output:", classes="card_title")
+            yield Static("", id="preset_command")
+            yield Static(
+                "Note: Some commands may not be supported on every CPU family.",
+                classes="field_hint", id="preset_command_note",
+            )
 
     def on_mount(self) -> None:
         self._sync_active()
@@ -72,22 +79,29 @@ class PowerTab(VerticalScroll):
     def _sync_active(self) -> None:
         if au.automation_enabled():
             self._highlight("")
-            self.query_one("#preset_detail", Static).update("")
+            self._clear_detail()
             return
         active = cfg.get("User", "Mode")
         self._highlight(active)
         if active in self._presets:
             self._show_detail(active)
         else:
-            self.query_one("#preset_detail", Static).update("")
+            self._clear_detail()
 
     def _highlight(self, active: str) -> None:
         for name in self._presets:
             self.query_one(f"#pbtn-{name}", Button).set_class(name == active, "active")
 
+    def _clear_detail(self) -> None:
+        self.query_one("#preset_detail", Static).update("")
+        self.query_one("#preset_command", Static).update("")
+        self.query_one("#preset_command_card").display = False
+
     def _show_detail(self, name: str) -> None:
         desc = power._PRESET_HINTS.get(name, "")
         self.query_one("#preset_detail", Static).update(f"[b]{name} Preset[/]\n\n{desc}")
+        self.query_one("#preset_command", Static).update(self._presets.get(name, ""))
+        self.query_one("#preset_command_card").display = True
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         bid = event.button.id or ""
