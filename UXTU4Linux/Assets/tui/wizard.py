@@ -10,6 +10,7 @@ from Assets.core import config as cfg
 
 
 _SUPPORTED = ("Amd_Apu", "Amd_Desktop_Cpu")
+TOTAL_STEPS = 3
 
 
 class SetupWizard(ModalScreen):
@@ -66,8 +67,8 @@ class SetupWizard(ModalScreen):
         self._set_step(1)
 
     def _set_step(self, n: int) -> None:
-        dots = "  ".join("[#2f81f7]●[/]" if i <= n else "[dim]○[/]" for i in range(1, 4))
-        self.query_one("#setup_progress", Static).update(f"{dots}    [dim]Step {n} of 3[/]")
+        dots = "  ".join("[#2f81f7]●[/]" if i <= n else "[dim]○[/]" for i in range(1, TOTAL_STEPS + 1))
+        self.query_one("#setup_progress", Static).update(f"{dots}    [dim]Step {n} of {TOTAL_STEPS}[/]")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         bid = event.button.id
@@ -179,7 +180,7 @@ class SetupWizard(ModalScreen):
         if supported:
             from Assets.engine.presets import get_preset_label
             variant = cfg.get("Info", "Variant") or ""
-            label = get_preset_label(cpu_type, family, cpu, cpu, variant)
+            label = get_preset_label(cpu_type, family, cpu, variant)
             lines.append("  [green]Hardware is supported.[/]")
             lines.append(f"  Preset profile  {label}")
         else:

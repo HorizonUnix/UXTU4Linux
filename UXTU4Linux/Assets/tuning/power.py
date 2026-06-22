@@ -26,8 +26,8 @@ def get_presets() -> dict:
     variant = cfg.get("Info", "Variant")
     cpu_model = _strip_cpu_name(raw_cpu)
 
-    preset = get_preset(cpu_type, family, cpu_model, raw_cpu, variant)
-    cfg.set_loaded_preset(get_preset_label(cpu_type, family, cpu_model, raw_cpu, variant))
+    preset = get_preset(cpu_type, family, cpu_model, variant)
+    cfg.set_loaded_preset(get_preset_label(cpu_type, family, cpu_model, variant))
     return to_dict(preset)
 
 

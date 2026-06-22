@@ -34,7 +34,7 @@ def _before(family: str, ref: str) -> bool:
     return _family_idx(family) < _family_idx(ref)
 
 
-def get_preset(cpu_type: str, family: str, cpu_model: str, raw_cpu: str, variant: str = "") -> Preset:
+def get_preset(cpu_type: str, family: str, cpu_model: str, variant: str = "") -> Preset:
     if variant:
         preset = _variant_preset(variant)
         if preset is not None:
@@ -46,7 +46,7 @@ def get_preset(cpu_type: str, family: str, cpu_model: str, raw_cpu: str, variant
     return _desktop_standard()
 
 
-def get_preset_label(cpu_type: str, family: str, cpu_model: str, raw_cpu: str, variant: str = "") -> str:
+def get_preset_label(cpu_type: str, family: str, cpu_model: str, variant: str = "") -> str:
     if variant and _variant_preset(variant) is not None:
         return variant
     if cpu_type == "Amd_Apu":

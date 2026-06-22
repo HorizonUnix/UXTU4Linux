@@ -108,7 +108,7 @@ class HardwareInfoModal(ModalScreen):
             from Assets.engine.presets import get_preset_label
             variant = cfg.get("Info", "Variant") or ""
             rows.append("  [green]Hardware is supported.[/]")
-            rows.append(f"  Preset profile  {get_preset_label(cpu_type, family, cpu, cpu, variant)}")
+            rows.append(f"  Preset profile  {get_preset_label(cpu_type, family, cpu, variant)}")
         else:
             rows.append("  [yellow]Hardware may not be fully supported.[/]")
             rows.append("  Custom presets are still available.")
@@ -349,7 +349,6 @@ class UpdaterModal(ModalScreen):
         if event.button.id == "upd_do":
             self.app.push_screen(UpdateProgressModal(_STABLE_URL))
         elif event.button.id == "upd_beta":
-            from Assets.tui.modals import ConfirmModal
             self.app.push_screen(
                 ConfirmModal("Switch to the beta build? Beta builds are unstable and may be broken."),
                 lambda ok: self.app.push_screen(UpdateProgressModal(_BETA_URL)) if ok else None)
