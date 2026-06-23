@@ -4,7 +4,8 @@ import threading
 from dataclasses import fields as dataclass_fields
 
 from Assets.core import config as cfg
-from Assets.daemon.util import _STOP_LOOP_TIMEOUT_S, log
+from Assets.daemon.loops import _STOP_LOOP_TIMEOUT_S
+from Assets.daemon.util import log
 
 
 class AdaptiveMixin:

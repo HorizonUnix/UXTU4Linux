@@ -18,8 +18,7 @@ from Assets.core import config as cfg
 cfg.load()
 
 from Assets.daemon.util import (
-    log, _acquire_daemon_lock, _load_saved_preset, _on_ac,
-    _DAEMON_LOCK_FILE, _RYZEN_SMU_WIKI,
+    log, _acquire_daemon_lock, _load_saved_preset, _on_ac, _DAEMON_LOCK_FILE,
 )
 from Assets.daemon.commands import CommandsMixin
 from Assets.daemon.loops import LoopsMixin
@@ -207,16 +206,16 @@ def main() -> None:
         installed = ryzen_smu_installed()
         sb = secure_boot_enabled()
         if not installed:
-            log.error("ryzen_smu not installed.\nInstall guide: %s", _RYZEN_SMU_WIKI)
+            log.error("ryzen_smu not installed.\nInstall guide: %s", cfg.RYZEN_SMU_WIKI_URL)
         elif sb and not ryzen_smu_signed():
-            log.error("ryzen_smu installed but not signed for Secure Boot.\nInstall guide: %s", _RYZEN_SMU_WIKI)
+            log.error("ryzen_smu installed but not signed for Secure Boot.\nInstall guide: %s", cfg.RYZEN_SMU_WIKI_URL)
         else:
-            log.error("ryzen_smu installed but not loaded.\nInstall guide: %s", _RYZEN_SMU_WIKI)
+            log.error("ryzen_smu installed but not loaded.\nInstall guide: %s", cfg.RYZEN_SMU_WIKI_URL)
         log.warning("Running without SMU access — presets will not be applied until ryzen_smu is working.")
     elif not smu.version_ok():
         log.error(
             "ryzen_smu version %s is too old (minimum: %s).\nInstall guide: %s",
-            smu.get_version(), smu.version_str(smu.MIN_VERSION), _RYZEN_SMU_WIKI,
+            smu.get_version(), smu.version_str(smu.MIN_VERSION), cfg.RYZEN_SMU_WIKI_URL,
         )
         log.warning("Running without SMU access — presets will not be applied until ryzen_smu is updated.")
     else:

@@ -14,22 +14,6 @@ from Assets.core import config as cfg
 
 _AC_TYPES = frozenset({"Mains", "USB", "USB_C", "USB_PD", "USB_PD_DRP", "USB_C_DRP"})
 
-_DMI_ALLOWED_TYPES = frozenset({
-    "bios", "system", "baseboard", "chassis", "processor",
-    "memory", "cache", "connector", "slot",
-    *(str(i) for i in range(42)),
-})
-
-MIN_INTERVAL_SECONDS = cfg.MIN_INTERVAL_SECONDS
-MAX_INTERVAL_SECONDS = cfg.MAX_INTERVAL_SECONDS
-
-_STOP_LOOP_TIMEOUT_S: int = 10
-_POWER_MONITOR_POLL_S: int = 2
-_SUSPEND_MONITOR_POLL_S: int = 1
-_SUSPEND_GAP_THRESHOLD_S: float = 1.0
-
-_RYZEN_SMU_WIKI = cfg.RYZEN_SMU_WIKI_URL
-
 _DAEMON_LOCK_FILE = "/run/uxtu4linux_daemon.lock"
 _daemon_lock_fh: object = None
 

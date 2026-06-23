@@ -5,9 +5,13 @@ import logging
 import threading
 
 from Assets.core import config as cfg
-from Assets.daemon.util import (
-    _DMI_ALLOWED_TYPES, _dn, _load_saved_preset, _on_ac, _run_cmd, log,
-)
+from Assets.daemon.util import _dn, _load_saved_preset, _on_ac, _run_cmd, log
+
+_DMI_ALLOWED_TYPES = frozenset({
+    "bios", "system", "baseboard", "chassis", "processor",
+    "memory", "cache", "connector", "slot",
+    *(str(i) for i in range(42)),
+})
 
 
 class CommandsMixin:

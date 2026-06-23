@@ -7,9 +7,12 @@ from Assets.core import config as cfg
 from Assets.daemon.util import (
     PresetState, _apply_via_smu, _clock_boottime, _dn, _fmt_duration,
     _on_ac, _resolve_preset_args, log,
-    _POWER_MONITOR_POLL_S, _STOP_LOOP_TIMEOUT_S, _SUSPEND_GAP_THRESHOLD_S,
-    _SUSPEND_MONITOR_POLL_S,
 )
+
+_STOP_LOOP_TIMEOUT_S: int = 10
+_POWER_MONITOR_POLL_S: int = 2
+_SUSPEND_MONITOR_POLL_S: int = 1
+_SUSPEND_GAP_THRESHOLD_S: float = 1.0
 
 
 class LoopsMixin:

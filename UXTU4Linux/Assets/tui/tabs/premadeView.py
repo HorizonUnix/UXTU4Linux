@@ -11,6 +11,13 @@ from Assets.tui.helpers import ADAPTIVE_ON_MSG, adaptive_running
 
 _COLOR = {"Eco": "eco", "Balance": "balance", "Performance": "perf", "Extreme": "extreme"}
 
+_PRESET_HINTS: dict[str, str] = {
+    "Eco": "This preset is designed to prioritize energy efficiency over performance. It sets power limits to conservative levels to reduce power consumption and heat generation, making it ideal for prolonged use in situations where maximizing battery life or minimizing energy usage is critical.",
+    "Balance": "This preset aims to find a balance between performance and power consumption, providing a stable and efficient experience. This preset sets the power limits to a level that balances performance and power usage, without sacrificing too much of either.",
+    "Performance": "This preset is optimized for maximum performance by increasing the power limits of the APU/CPU, which allows it to run at higher clock speeds for longer periods of time. This can result in improved system responsiveness and faster load times in applications that require high levels of processing power.",
+    "Extreme": "This preset aims to push the power limits of the system to their maximum, allowing for the highest possible performance. This preset is designed for users who demand the most from their hardware and are willing to tolerate higher power consumption and potentially increased noise levels.",
+}
+
 
 class PowerTab(VerticalScroll):
     def compose(self) -> ComposeResult:
@@ -54,7 +61,7 @@ class PowerTab(VerticalScroll):
         self.query_one("#preset_command_card").display = False
 
     def _show_detail(self, name: str) -> None:
-        desc = power._PRESET_HINTS.get(name, "")
+        desc = _PRESET_HINTS.get(name, "")
         self.query_one("#preset_detail", Static).update(f"[b]{name} Preset[/]\n\n{desc}")
         self.query_one("#preset_command", Static).update(self._presets.get(name, ""))
         self.query_one("#preset_command_card").display = True
