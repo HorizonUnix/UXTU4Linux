@@ -98,6 +98,25 @@ class DaemonClient:
     def reset_state(self) -> dict:
         return self._send({"cmd": "reset_state"}) or {"ok": False}
 
+    def adaptive_start(self, preset: str, values: dict | None = None) -> dict:
+        cmd = {"cmd": "adaptive_start", "preset": preset}
+        if values is not None:
+            cmd["values"] = values
+        return self._send(cmd) or {"ok": False, "error": "daemon not responding"}
+
+    def adaptive_stop(self) -> dict:
+        return self._send({"cmd": "adaptive_stop"}) or {"ok": False}
+
+    def adaptive_status(self) -> dict:
+        return self._send({"cmd": "adaptive_status"}) or {
+            "ok": False,
+            "running": False,
+            "preset": "",
+            "sample": {},
+            "applied": "",
+            "caps": [],
+        }
+
 
 _client: DaemonClient | None = None
 _client_lock = threading.Lock()

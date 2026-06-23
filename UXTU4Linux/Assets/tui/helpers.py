@@ -79,3 +79,4 @@ async def ensure_sudo(app) -> bool:
         return True
     from Assets.tui.modals import SudoModal
     return bool(await app.push_screen_wait(SudoModal()))
+

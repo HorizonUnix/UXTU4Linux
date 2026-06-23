@@ -3,8 +3,8 @@ import tempfile
 from configparser import ConfigParser
 from pathlib import Path
 
-LOCAL_VERSION = "0.9.1"
-LOCAL_BUILD = "9-stable-21Jun26-m1"
+LOCAL_VERSION = "0.9.2"
+LOCAL_BUILD = "9-beta-23Jun26-adaptiveTest1"
 
 GITHUB_API_URL = "https://api.github.com/repos/HorizonUnix/UXTU4Linux/releases/latest"
 LATEST_VER_URL = "https://github.com/HorizonUnix/UXTU4Linux/releases/latest"
@@ -16,6 +16,7 @@ ASSETS_DIR = os.path.join(_ROOT, "Assets")
 
 CONFIG_PATH = os.path.join(ASSETS_DIR, "config.ini")
 CUSTOM_PRESETS_PATH = Path(ASSETS_DIR) / "custom.json"
+ADAPTIVE_PRESETS_PATH = os.path.join(ASSETS_DIR, "adaptive.json")
 
 DMIDECODE = "dmidecode"
 KERNEL = os.uname().sysname
@@ -112,7 +113,8 @@ def instance() -> ConfigParser:
 
 REQUIRED: dict[str, list[str]] = {
     "User": ["mode"],
-    "Settings": ["time", "reapply", "applyonstart", "softwareupdate", "debug"],
+    "Settings": ["time", "reapply", "applyonstart", "autostartadaptive", "softwareupdate", "debug"],
     "Info": ["cpu", "signature", "architecture", "family", "type", "variant"],
     "Automations": ["enabled", "onac", "onbattery", "onresume"],
+    "Adaptive": ["enabled", "preset", "interval"],
 }

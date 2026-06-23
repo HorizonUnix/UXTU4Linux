@@ -48,8 +48,10 @@ def needs_setup() -> bool:
 
 _CFG_DEFAULTS: dict[str, dict[str, str]] = {
     "User": {"mode": ""},
-    "Settings": {"time": "3", "reapply": "0", "applyonstart": "0", "softwareupdate": "1", "debug": "0"},
+    "Settings": {"time": "3", "reapply": "0", "applyonstart": "0",
+                 "autostartadaptive": "0", "softwareupdate": "1", "debug": "0"},
     "Automations": {"enabled": "0", "onac": "", "onbattery": "", "onresume": ""},
+    "Adaptive": {"enabled": "0", "preset": "", "interval": "2"},
 }
 
 
@@ -76,4 +78,6 @@ def reset_all() -> None:
         os.remove(cfg.CONFIG_PATH)
     if cfg.CUSTOM_PRESETS_PATH.exists():
         cfg.CUSTOM_PRESETS_PATH.unlink(missing_ok=True)
+    if os.path.isfile(cfg.ADAPTIVE_PRESETS_PATH):
+        os.remove(cfg.ADAPTIVE_PRESETS_PATH)
     cfg.instance().clear()

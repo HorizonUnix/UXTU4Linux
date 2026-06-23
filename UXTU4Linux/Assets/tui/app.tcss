@@ -202,6 +202,17 @@ StatusTab {
     border: round $panel-lighten-1;
 }
 
+#status_adaptive_card {
+    height: auto;
+    padding: 1 2;
+    margin: 1 1 0 1;
+    border: round $panel-lighten-1;
+}
+
+#status_adaptive {
+    height: auto;
+}
+
 #status_smu_card {
     height: auto;
     margin: 1 1 1 1;
@@ -522,7 +533,7 @@ AboutModal, UpdaterModal, UpdateProgressModal, SudoModal {
     height: auto;
     border: round $panel-lighten-1;
     padding: 1 2;
-    margin: 0 1 1 1;
+    margin: 1 1 0 1;
 }
 
 .topbar_row {
@@ -535,14 +546,17 @@ AboutModal, UpdaterModal, UpdateProgressModal, SudoModal {
     min-width: 0;
 }
 
-#preset_select {
+#preset_select,
+#adaptive_select {
     width: 1fr;
     margin: 0 1 0 0;
 }
 
-#new_name {
+#new_name,
+#adaptive_name {
     width: 1fr;
 }
+
 
 .field_card {
     height: auto;
@@ -558,3 +572,30 @@ AboutModal, UpdaterModal, UpdateProgressModal, SudoModal {
 .unit { width: 6; height: 3; content-align-vertical: middle; }
 
 
+
+.graph_grid {
+    height: auto;
+    grid-size: 2;
+    grid-rows: auto;
+    grid-gutter: 0;
+}
+
+.graph_card {
+    height: auto;
+    width: 1fr;
+}
+
+.graph_card PlotextPlot {
+    height: 12;
+    width: 1fr;
+    margin-top: 1;
+}
+
+
+.topbar_title_row {
+    height: auto;
+}
+
+.topbar_title_row .card_title {
+    width: auto;
+}

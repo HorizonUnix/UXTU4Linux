@@ -4,6 +4,7 @@ from textual import work
 from textual.app import ComposeResult
 from textual.containers import Grid, Horizontal, Vertical, VerticalScroll
 from textual.widgets import Button, Collapsible, Input, Label, Select, Static, Switch
+from textual_plotext import PlotextPlot as _BasePlotextPlot
 
 from Assets.core import config as cfg
 from Assets.tuning import automations as au, power
@@ -17,37 +18,97 @@ from Assets.tuning.custom import (
 from Assets.tui.modals import ConfirmModal
 
 
+class PlotextPlot(_BasePlotextPlot):
+    def render(self):
+        from rich.text import Text
+        height = max(1, self.size.height - 1)
+        self._plot.plotsize(self.size.width, height)
+        self._plot._set_size(self.size.width, height)
+        self._plot.theme(self._get_plotext_theme_name(self.app.theme))
+        return Text.from_ansi(self._plot.build())
+
+
 _COLOR = {"Eco": "eco", "Balance": "balance", "Performance": "perf", "Extreme": "extreme"}
 
 _AUTOMATIONS_ON_MSG = (
     "Automations are on. Turn off Override in the Automations tab to apply a preset manually."
 )
 
+_ADAPTIVE_ON_MSG = (
+    "Adaptive Mode is running. Stop it in the Adaptive tab to apply a preset manually."
+)
+
+
+def _adaptive_running() -> bool:
+    try:
+        from Assets.core import ipc
+        return bool(ipc.get_client().adaptive_status().get("running"))
+    except Exception:
+        return False
+
 
 class HomeTab(VerticalScroll):
     _NAV = (
         ("Premade Presets", "power"),
         ("Custom Presets", "custom"),
+        ("Adaptive Mode", "adaptive"),
         ("Automations", "automations"),
-        ("System Info", "hardware"),
-        ("Status", "status"),
-        ("Settings", "settings"),
     )
 
+    _GRAPHS = (
+        ("cpu_temp", "CPU Temperature", "°C"),
+        ("cpu_power", "CPU Power", "W"),
+        ("cpu_clk", "CPU Clock", "MHz"),
+        ("cpu_load", "CPU Usage", "%"),
+    )
+
+    _WINDOW = 60
+
     def compose(self) -> ComposeResult:
+        from Assets.system import sensors
+        self._caps = sensors.capabilities()
+        self._series = {}
+        active = [g for g in self._GRAPHS if g[0] in self._caps]
+        if active:
+            with Grid(classes="graph_grid"):
+                for key, title, _unit in active:
+                    self._series[key] = []
+                    with Vertical(classes="settings_card graph_card"):
+                        yield Static(title, id=f"graph_title_{key}", classes="card_title")
+                        yield PlotextPlot(id=f"graph_{key}")
         with Vertical(classes="settings_card"):
-            yield Static("Home", classes="card_title")
-            yield Static("Pick where to go:", classes="field_hint")
+            yield Static("Go to", classes="card_title")
             with Grid(classes="home_grid"):
                 for label, tab in self._NAV:
                     yield Button(label, id=f"home-{tab}", variant="primary")
-            yield Button("About", id="home-about", classes="home_about")
+
+    def on_mount(self) -> None:
+        self._poll()
+        self.set_interval(1.0, self._poll)
+
+    def _poll(self) -> None:
+        from Assets.system import sensors
+        snapshot = sensors.sample()
+        for key, title, unit in self._GRAPHS:
+            if key not in self._series:
+                continue
+            value = getattr(snapshot, key)
+            if value is None:
+                continue
+            series = self._series[key]
+            series.append(float(value))
+            del series[:-self._WINDOW]
+            plot = self.query_one(f"#graph_{key}", PlotextPlot)
+            plot.plt.clear_data()
+            xs = list(range(1, len(series) + 1))
+            plot.plt.plot(xs, series, marker="braille", color="cyan")
+            plot.refresh()
+            self.query_one(f"#graph_title_{key}", Static).update(
+                f"{title} {round(value)} {unit}")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         bid = event.button.id or ""
-        if bid == "home-about":
-            self.app.action_about()
-        elif bid.startswith("home-"):
+        if bid.startswith("home-"):
             self.app.set_focus(None)
             self.app.action_show_tab(bid[len("home-"):])
 
@@ -110,6 +171,9 @@ class PowerTab(VerticalScroll):
         if au.automation_enabled():
             self.app.notify(_AUTOMATIONS_ON_MSG, title="Automations active", severity="warning")
             return
+        if _adaptive_running():
+            self.app.notify(_ADAPTIVE_ON_MSG, title="Adaptive Mode active", severity="warning")
+            return
         name = bid[len("pbtn-"):]
         self._show_detail(name)
         self._highlight(name)
@@ -132,8 +196,7 @@ class PowerTab(VerticalScroll):
                 "See the Status tab for details.",
                 title="Applied with warnings", severity="warning")
         else:
-            self.app.notify(f"Preset '{mode}' applied successfully.",
-                            title="Applied", severity="information")
+            self.app.notify(f"Preset '{mode}' applied successfully.", title="Applied")
 
 
 _HELP = (
@@ -248,14 +311,21 @@ class AutomationsTab(VerticalScroll):
 class CustomEditor(VerticalScroll):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.fields = _default_fields_for_current_cpu()
         self.family = cfg.get("Info", "Family")
         self._cpu_type = cfg.get("Info", "Type")
         self._all_sections = DT_SECTION_TITLES if self._cpu_type == "Amd_Desktop_Cpu" else APU_SECTION_TITLES
+        active = cfg.get("User", "Mode")
+        names = [_display_name(n) for n in get_custom_preset_names()]
+        if active in names:
+            self.fields = load_preset_fields(active) or _default_fields_for_current_cpu()
+            self.preset_name = active
+            self._loaded_name = active
+        else:
+            self.fields = _default_fields_for_current_cpu()
+            self.preset_name = ""
+            self._loaded_name = ""
         self.supported = _supported_field_keys(self.family, self.fields)
         self.sections = _active_sections(self._all_sections, self.fields, self.supported)
-        self.preset_name = ""
-        self._loaded_name = ""
 
     def compose(self) -> ComposeResult:
         names = [_display_name(n) for n in get_custom_preset_names()]
@@ -268,9 +338,9 @@ class CustomEditor(VerticalScroll):
                 yield Input(value=self.preset_name, placeholder="New preset name", id="new_name")
             with Horizontal(classes="topbar_row"):
                 yield Button("Save", id="ed_save", variant="primary")
-                yield Button("Apply", id="ed_apply", variant="success")
                 yield Button("Duplicate", id="ed_duplicate")
                 yield Button("Delete", id="ed_delete", variant="error")
+                yield Button("Apply", id="ed_apply", variant="success")
         with Vertical(classes="settings_card"):
             for s in sorted(self.sections):
                 rows = [self._field_row(fi) for fi in _section_indices(self.fields, s, self.supported)]
@@ -358,16 +428,22 @@ class CustomEditor(VerticalScroll):
                     "apply a preset manually.",
                     title="Automations active", severity="warning")
                 return
+            if _adaptive_running():
+                self.app.notify(_ADAPTIVE_ON_MSG, title="Adaptive Mode active", severity="warning")
+                return
             self._sync_inputs()
             self._do_apply()
         elif bid == "ed_duplicate":
             self._sync_inputs()
             source = self.query_one("#new_name", Input).value.strip() or self.preset_name
+            if not source:
+                self.app.notify("Select or name a preset to duplicate.", title="Duplicate preset",
+                                severity="warning")
+                return
             new_name = unique_preset_name(source)
             self.preset_name = new_name
             self._do_save(new_name)
-            self.app.notify(f"Duplicated to '{new_name}'.", title="Duplicate preset",
-                            severity="information")
+            self.app.notify(f"Duplicated to '{new_name}'.", title="Duplicate preset")
         elif bid == "ed_delete":
             sel = self.query_one("#preset_select", Select)
             if not isinstance(sel.value, str):
@@ -408,7 +484,7 @@ class CustomEditor(VerticalScroll):
         result = apply_preset(args, name)
         if result.get("ok"):
             self.app.call_from_thread(self.app.notify, f"Preset '{name}' applied successfully.",
-                                      title="Applied", severity="information")
+                                      title="Applied")
         else:
             err = result.get("error", "apply failed")
             self.app.call_from_thread(
@@ -422,9 +498,11 @@ class CustomEditor(VerticalScroll):
     def _after_save(self, name: str) -> None:
         self._loaded_name = name
         self._refresh_presets(name)
+        self.app.notify(f"Preset '{name}' saved.", title="Saved")
 
     def _after_delete(self, name: str) -> None:
         self.run_worker(self._reset_to_default())
+        self.app.notify(f"Preset '{name}' deleted.", title="Deleted")
 
     async def _reset_to_default(self) -> None:
         self.preset_name = ""
@@ -507,11 +585,20 @@ def _strip(name: str) -> str:
     return (name or "").removesuffix("_custom_preset")
 
 
+def _fmt_metric(value, unit: str) -> str:
+    if value is None:
+        return "[dim]—[/]"
+    return f"{round(value)} {unit}"
+
+
 class StatusTab(VerticalScroll):
     def compose(self) -> ComposeResult:
         with Vertical(id="status_panel"):
             yield Static("Daemon status", classes="card_title")
             yield Static("", id="status_info")
+        with Vertical(id="status_adaptive_card"):
+            yield Static("Adaptive Mode", classes="card_title")
+            yield Static("", id="status_adaptive")
         with Vertical(id="status_smu_card"):
             yield Static("SMU output", id="status_smu_head", classes="card_title")
             yield Static("", id="status_smu")
@@ -519,28 +606,33 @@ class StatusTab(VerticalScroll):
     def on_mount(self) -> None:
         self._timer = None
         self._watch = None
+        self._adaptive_timer = None
         self._last_ac = None
         self.refresh_status()
+        self.refresh_adaptive()
 
     def on_show(self) -> None:
         self.refresh_status()
+        self.refresh_adaptive()
         self._reschedule()
 
     def on_hide(self) -> None:
         self._stop_timers()
 
     def _stop_timers(self) -> None:
-        for t in (self._timer, self._watch):
+        for t in (self._timer, self._watch, self._adaptive_timer):
             if t is not None:
                 t.stop()
         self._timer = None
         self._watch = None
+        self._adaptive_timer = None
 
     def _reschedule(self) -> None:
         from Assets.tui.helpers import on_ac
         self._stop_timers()
         self._last_ac = on_ac()
         self._watch = self.set_interval(2.0, self._check_power)
+        self._adaptive_timer = self.set_interval(1.5, self.refresh_adaptive)
         if cfg.get("Settings", "ReApply", "0") == "1":
             interval = cfg.parse_interval(cfg.get("Settings", "Time", "3"))
             self._timer = self.set_interval(interval, self.refresh_status)
@@ -609,9 +701,41 @@ class StatusTab(VerticalScroll):
                     if st.get("last_rejected") else "[green]SMU output — OK[/]")
         smu.update(out)
 
+    @work(thread=True, exclusive=True, group="status_adaptive")
+    def refresh_adaptive(self) -> None:
+        from Assets.core.ipc import get_client
+        st = get_client().adaptive_status()
+        self.app.call_from_thread(self._update_adaptive, st)
+
+    def _update_adaptive(self, st: dict) -> None:
+        try:
+            panel = self.query_one("#status_adaptive", Static)
+        except Exception:
+            return
+        if not st.get("running"):
+            panel.update("Adaptive       [dim]OFF[/]")
+            return
+        self.refresh_status()
+        sample = st.get("sample") or {}
+        rows = [
+            "Adaptive       [green]ON[/]",
+            f"Preset         {st.get('preset') or '—'}",
+            f"CPU temp       {_fmt_metric(sample.get('cpu_temp'), '°C')}",
+            f"CPU load       {_fmt_metric(sample.get('cpu_load'), '%')}",
+            f"CPU power      {_fmt_metric(sample.get('cpu_power'), 'W')}",
+            f"CPU clock      {_fmt_metric(sample.get('cpu_clk'), 'MHz')}",
+            f"iGPU load      {_fmt_metric(sample.get('igpu_load'), '%')}",
+            f"iGPU clock     {_fmt_metric(sample.get('igpu_clk'), 'MHz')}",
+        ]
+        applied = st.get("applied")
+        if applied:
+            rows.append(f"Applied        {applied}")
+        panel.update("\n".join(rows))
+
 
 _TOGGLES = (
     ("applyonstart", "Apply preset on daemon start", "Settings", "ApplyOnStart"),
+    ("autostartadaptive", "Auto start adaptive mode", "Settings", "AutoStartAdaptive"),
     ("softwareupdate", "Software update", "Settings", "SoftwareUpdate"),
     ("debug", "Debug logging", "Settings", "Debug"),
 )
@@ -682,7 +806,7 @@ class SettingsTab(VerticalScroll):
         elif bid == "reset_all":
             from Assets.tui.modals import ConfirmModal
             self.app.push_screen(
-                ConfirmModal("Reset all settings and custom presets? This cannot be undone."),
+                ConfirmModal("Reset all settings, custom presets and adaptive presets? This cannot be undone."),
                 lambda ok: self.app.exit("reset") if ok else None)
         elif bid == "daemon_install":
             from Assets.daemon.service import has_systemctl
@@ -788,3 +912,313 @@ class SettingsTab(VerticalScroll):
         client = get_client()
         if client.ping():
             client.reload_config()
+
+
+class AdaptiveTab(VerticalScroll):
+    _FIELDS = (
+        ("max_temp", "Max Temperature Limit (°C)", "", 85),
+        ("power", "Max Power Limit (W)", "", 28),
+        ("co_max", "Max Curve Optimiser Limit (-)", "", 30),
+        ("igpu_min", "Minimum iGPU Clock Limit (MHz)", "", 400),
+        ("igpu_max", "Maximum iGPU Clock Limit (MHz)", "", 2000),
+        ("min_cpu_clk", "Minimum CPU Clock Limit (MHz)", "", 1200),
+        ("nv_max_clk", "Max GPU Clock", "MHz", 4000),
+        ("nv_core_offset", "GPU Core Offset", "MHz", 0),
+        ("nv_mem_offset", "GPU Mem Offset", "MHz", 0),
+    )
+
+    _HINTS = {
+        "max_temp": "Controls the max temperature limit adaptive mode is allowed to set",
+        "power": "Controls the max power limit adpative mode is allowed to set",
+        "co_max": "Controls the max negative curve optimiser limit adpative mode is allowed to set",
+        "igpu_min": "Controls the minimum iGPU clock speed adaptive mode is allowed to set",
+        "igpu_max": "Controls the maximum iGPU clock speed adaptive mode is allowed to set",
+        "min_cpu_clk": "Controls the minimum CPU clock speed at which adaptive mode will start throttling iGPU clocks",
+        "nv_max_clk": "Controls the maximum voltage your GPU will run within the Frequency/Voltage curve based on clock speed. You can undervolt your NVIDIA GPU by lowering this clock speed below stock and increasing the core clock offset. Start at your GPU's rated boost clock and work down. To reset it, set it to the maximum possible clock the slider allows.",
+        "nv_core_offset": "Controls the clock offset for your NVIDIA GPU's core clock",
+        "nv_mem_offset": "Controls the clock offset for your NVIDIA GPU's VRAM clock",
+    }
+
+    _CORE_KEYS = ("max_temp", "power", "co_max", "igpu_min", "igpu_max", "min_cpu_clk")
+    _NV_KEYS = ("nv_max_clk", "nv_core_offset", "nv_mem_offset")
+
+    _running = False
+    _running_preset = ""
+    _has_asus = False
+    _has_nvidia = False
+
+    def _num_field(self, key: str) -> Vertical:
+        _, label, unit, default = next(f for f in self._FIELDS if f[0] == key)
+        head = Static(label, classes="field_name", markup=False)
+        desc = Static(self._HINTS[key], classes="field_hint", markup=False)
+        box = Input(str(default), type="integer", restrict=r"-?\d*",
+                    id=f"adaptive_f_{key}", classes="card_value")
+        row = Horizontal(box, Static(unit, classes="unit"), classes="card_controls")
+        return Vertical(head, desc, row, classes="field_card")
+
+    def _toggle_field(self, key: str, label: str, hint: str, default: bool = True) -> Vertical:
+        head = Static(label, classes="field_name", markup=False)
+        desc = Static(hint, classes="field_hint", markup=False)
+        row = Horizontal(Switch(value=default, id=f"adaptive_enable_{key}"),
+                         Label("Enabled", classes="set_label"), classes="card_controls")
+        return Vertical(head, desc, row, classes="field_card")
+
+    def _interval_field(self) -> Vertical:
+        head = Static("Polling Rate", classes="field_name", markup=False)
+        desc = Static("How often adaptive mode polls sensors and adjusts, in seconds.",
+                      classes="field_hint", markup=False)
+        box = Input(self._current_interval(), id="adaptive_interval",
+                    classes="card_value", restrict=r"\d*\.?\d*")
+        row = Horizontal(box, Static("s", classes="unit"), classes="card_controls")
+        return Vertical(head, desc, row, classes="field_card")
+
+    def _asus_mode_field(self) -> Vertical:
+        from Assets.system import platformctl
+        head = Static("ASUS Performance Mode", classes="field_name", markup=False)
+        desc = Static("Silent, Balanced or Turbo.",
+                      classes="field_hint", markup=False)
+        sel = Select([(c, i) for i, c in enumerate(platformctl.ASUS_MODE_CHOICES)],
+                     value=1, allow_blank=False, id="adaptive_asus_mode")
+        return Vertical(head, desc, Horizontal(sel, classes="card_controls"), classes="field_card")
+
+    def compose(self) -> ComposeResult:
+        from Assets.tuning import adaptivemanager, custom
+        from Assets.system import platformctl
+        self._has_asus = platformctl.asus_available()
+        self._has_nvidia = custom.has_nvidia()
+        names = adaptivemanager.names()
+        with Vertical(id="editor_topbar"):
+            with Horizontal(classes="topbar_title_row"):
+                yield Static("Adaptive Mode", classes="card_title")
+            with Horizontal(classes="topbar_row"):
+                yield Select([(n, n) for n in names], prompt="Saved Presets",
+                             id="adaptive_select", allow_blank=True)
+                yield Input(placeholder="New preset name", id="adaptive_name")
+            with Horizontal(classes="topbar_row"):
+                yield Button("Save", id="adaptive_save", variant="primary")
+                yield Button("Duplicate", id="adaptive_duplicate")
+                yield Button("Delete", id="adaptive_delete", variant="error")
+                yield Button("Start", id="adaptive_start", variant="success")
+        with Vertical(classes="settings_card"):
+            yield Collapsible(
+                self._interval_field(),
+                self._num_field("max_temp"),
+                self._num_field("power"),
+                self._toggle_field("co", "Curve Optimiser",
+                                   "Enable adaptive Curve Optimiser tuning.", False),
+                self._num_field("co_max"),
+                title="Basic Adaptive Mode Settings", collapsed=True)
+            yield Collapsible(
+                self._toggle_field("igpu", "Turbo Boost Overdrive iGPU",
+                                   "Provides the ability to toggle/set Turbo Boost Overdrive iGPU targets.", False),
+                self._num_field("igpu_max"),
+                self._num_field("igpu_min"),
+                self._num_field("min_cpu_clk"),
+                title="Turbo Boost Overdrive iGPU Settings", collapsed=True)
+            if self._has_asus:
+                yield Collapsible(
+                    self._toggle_field("asus", "ASUS Power Profile",
+                                       "Provides the ability to set an ASUS power profile.", False),
+                    self._asus_mode_field(),
+                    title="ASUS Power Profile", collapsed=True)
+            if self._has_nvidia:
+                yield Collapsible(
+                    self._toggle_field("nvidia", "NVIDIA GPU Tuning",
+                                       "Provides the ability to set tune your NVIDIA GPU.", False),
+                    self._num_field("nv_max_clk"), self._num_field("nv_core_offset"),
+                    self._num_field("nv_mem_offset"),
+                    title="NVIDIA GPU Tuning", collapsed=True)
+
+    def on_mount(self) -> None:
+        from Assets.tuning import adaptivemanager
+        active = cfg.get("Adaptive", "preset", "")
+        if active and active in adaptivemanager.names():
+            sel = self.query_one("#adaptive_select", Select)
+            if sel.value != active:
+                try:
+                    sel.value = active
+                except Exception:
+                    pass
+        self._refresh_status()
+        self.set_interval(1.5, self._refresh_status)
+
+    def _refresh_status(self) -> None:
+        from Assets.core import ipc
+        st = ipc.get_client().adaptive_status()
+        running = bool(st.get("running"))
+        self._running = running
+        preset = st.get("preset")
+        self._running_preset = preset or ""
+        self.query_one("#adaptive_start", Button).label = "Stop" if running else "Start"
+        if running and preset:
+            sel = self.query_one("#adaptive_select", Select)
+            if sel.value != preset:
+                try:
+                    sel.value = preset
+                except Exception:
+                    pass
+
+    def _collect_preset(self):
+        from Assets.tuning.adaptivemanager import AdaptivePreset
+        def val(key):
+            try:
+                return int(self.query_one(f"#adaptive_f_{key}", Input).value)
+            except ValueError:
+                return 0
+        preset = AdaptivePreset(
+            max_temp=val("max_temp"), power=val("power"),
+            co_max=val("co_max"), igpu_min=val("igpu_min"), igpu_max=val("igpu_max"),
+            min_cpu_clk=val("min_cpu_clk"),
+            enable_co=self.query_one("#adaptive_enable_co", Switch).value,
+            enable_igpu=self.query_one("#adaptive_enable_igpu", Switch).value)
+        if self._has_asus:
+            preset.enable_asus = self.query_one("#adaptive_enable_asus", Switch).value
+            mode = self.query_one("#adaptive_asus_mode", Select).value
+            preset.asus_mode = mode if isinstance(mode, int) else 1
+        if self._has_nvidia:
+            preset.enable_nvidia = self.query_one("#adaptive_enable_nvidia", Switch).value
+            preset.nv_max_clk = val("nv_max_clk")
+            preset.nv_core_offset = val("nv_core_offset")
+            preset.nv_mem_offset = val("nv_mem_offset")
+        return preset
+
+    def _current_interval(self) -> str:
+        return cfg.get("Adaptive", "interval", "2") or "2"
+
+    def _persist_run(self, target: str, enabled: bool) -> None:
+        try:
+            value = float(self.query_one("#adaptive_interval", Input).value)
+        except ValueError:
+            value = 2.0
+        cfg.set_config("Adaptive", "interval", str(min(8.0, max(1.0, value))))
+        cfg.set_config("Adaptive", "enabled", "1" if enabled else "0")
+        if target:
+            cfg.set_config("Adaptive", "preset", target)
+        cfg.save()
+
+    def _refresh_presets(self, select) -> None:
+        from Assets.tuning import adaptivemanager
+        names = adaptivemanager.names()
+        sel = self.query_one("#adaptive_select", Select)
+        sel.set_options([(n, n) for n in names])
+        if select and select in names:
+            sel.value = select
+            self.query_one("#adaptive_name", Input).value = select
+        else:
+            self.query_one("#adaptive_name", Input).value = ""
+
+    def _load_preset(self, name: str) -> None:
+        from Assets.tuning import adaptivemanager
+        preset = adaptivemanager.get(name)
+        if preset is None:
+            return
+        self.query_one("#adaptive_name", Input).value = name
+        for key in self._CORE_KEYS:
+            self.query_one(f"#adaptive_f_{key}", Input).value = str(getattr(preset, key))
+        self.query_one("#adaptive_enable_co", Switch).value = preset.enable_co
+        self.query_one("#adaptive_enable_igpu", Switch).value = preset.enable_igpu
+        if self._has_asus:
+            self.query_one("#adaptive_enable_asus", Switch).value = preset.enable_asus
+            self.query_one("#adaptive_asus_mode", Select).value = preset.asus_mode
+        if self._has_nvidia:
+            self.query_one("#adaptive_enable_nvidia", Switch).value = preset.enable_nvidia
+            for key in self._NV_KEYS:
+                self.query_one(f"#adaptive_f_{key}", Input).value = str(getattr(preset, key))
+
+    def on_select_changed(self, event: Select.Changed) -> None:
+        if event.select.id == "adaptive_select" and isinstance(event.value, str):
+            self._load_preset(event.value)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        from dataclasses import asdict
+        from Assets.core import ipc
+        from Assets.tuning import adaptivemanager
+        bid = event.button.id or ""
+        if bid == "adaptive_save":
+            name = self.query_one("#adaptive_name", Input).value.strip()
+            if not name:
+                self.app.notify("Enter a preset name first.", title="Save preset",
+                                severity="warning")
+                return
+            preset = self._collect_preset()
+            adaptivemanager.save(name, preset)
+            self._refresh_presets(name)
+            if self._running and name == self._running_preset:
+                self._persist_run(name, enabled=True)
+                ipc.get_client().adaptive_start(name, asdict(preset))
+                self._refresh_status()
+                self.app.notify(f"Preset '{name}' saved and applied.", title="Saved")
+            else:
+                self.app.notify(f"Preset '{name}' saved.", title="Saved")
+        elif bid == "adaptive_duplicate":
+            sel = self.query_one("#adaptive_select", Select).value
+            base = self.query_one("#adaptive_name", Input).value.strip() or \
+                (sel if isinstance(sel, str) else "")
+            if not base:
+                self.app.notify("Select or name a preset to duplicate.", title="Duplicate preset",
+                                severity="warning")
+                return
+            existing = set(adaptivemanager.names())
+            new_name, i = base, 2
+            while new_name in existing:
+                new_name = f"{base} ({i})"
+                i += 1
+            adaptivemanager.save(new_name, self._collect_preset())
+            self._refresh_presets(new_name)
+            self.app.notify(f"Duplicated to '{new_name}'.", title="Duplicate preset")
+        elif bid == "adaptive_delete":
+            sel = self.query_one("#adaptive_select", Select).value
+            if not isinstance(sel, str):
+                self.app.notify("Select a saved preset to delete.", title="Delete preset",
+                                severity="warning")
+                return
+            adaptivemanager.delete(sel)
+            self._refresh_presets(None)
+            if cfg.get("Adaptive", "preset", "") == sel:
+                cfg.set_config("Adaptive", "preset", "")
+                cfg.save()
+            if self._running and self._running_preset and \
+                    self._running_preset not in adaptivemanager.names():
+                result = ipc.get_client().adaptive_stop()
+                if result.get("ok"):
+                    cfg.set_config("Adaptive", "enabled", "0")
+                    cfg.save()
+                self.app.notify(f"Preset '{sel}' deleted — Adaptive Mode stopped.", title="Deleted")
+            else:
+                self.app.notify(f"Preset '{sel}' deleted.", title="Deleted")
+            self._refresh_status()
+        elif bid == "adaptive_start":
+            client = ipc.get_client()
+            if self._running:
+                result = client.adaptive_stop()
+                if result.get("ok"):
+                    self._persist_run("", enabled=False)
+                    self.app.notify("Adaptive Mode stopped.", title="Adaptive Mode")
+                else:
+                    self.app.notify(result.get("error", "Failed to stop Adaptive Mode."),
+                                    title="Adaptive Mode", severity="error")
+            else:
+                name = self.query_one("#adaptive_name", Input).value.strip()
+                sel = self.query_one("#adaptive_select", Select).value
+                if name:
+                    target = name
+                elif isinstance(sel, str):
+                    target = sel
+                else:
+                    self.app.notify("Select or save a preset first.", title="Adaptive Mode",
+                                    severity="warning")
+                    return
+                preset = self._collect_preset()
+                if name:
+                    adaptivemanager.save(name, preset)
+                    self._refresh_presets(name)
+                self._persist_run(target, enabled=True)
+                result = client.adaptive_start(target, asdict(preset))
+                if result.get("ok"):
+                    self.app.notify(f"Adaptive Mode started — {target}.", title="Adaptive Mode")
+                else:
+                    cfg.set_config("Adaptive", "enabled", "0")
+                    cfg.save()
+                    self.app.notify(result.get("error", "Failed to start Adaptive Mode."),
+                                    title="Adaptive Mode", severity="error")
+            self._refresh_status()

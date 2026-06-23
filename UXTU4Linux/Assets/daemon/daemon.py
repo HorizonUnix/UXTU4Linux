@@ -12,7 +12,7 @@ import time
 import threading
 import zmq
 import fcntl
-from dataclasses import dataclass
+from dataclasses import dataclass, fields as dataclass_fields
 
 _HERE = os.path.dirname(os.path.realpath(__file__))
 _ROOT = os.path.dirname(os.path.dirname(_HERE))
@@ -254,6 +254,15 @@ class PowerDaemon:
         self._running_loop = False
         self._last_logged_mode = ""
         self._last_ac_state: bool | None = None
+        self._adaptive_thread: threading.Thread | None = None
+        self._stop_adaptive_evt = threading.Event()
+        self._adaptive_running = False
+        self._adaptive_preset_name = ""
+        self._adaptive_preset = None
+        self._adaptive_state = None
+        self._adaptive_caps: set = set()
+        self._adaptive_sample = None
+        self._adaptive_applied = ""
 
         self._dispatch = {
             "ping": self._cmd_ping,
@@ -266,6 +275,9 @@ class PowerDaemon:
             "dmidecode": self._cmd_dmidecode,
             "reload_config": self._cmd_reload_config,
             "reset_state": self._cmd_reset_state,
+            "adaptive_start": self._cmd_adaptive_start,
+            "adaptive_stop": self._cmd_adaptive_stop,
+            "adaptive_status": self._cmd_adaptive_status,
         }
 
     def _cmd_reload_config(self, _msg: dict) -> dict:
@@ -363,6 +375,8 @@ class PowerDaemon:
         )
         while not self._stop_evt.wait(interval):
             try:
+                if self._adaptive_running:
+                    continue
                 on_ac = _on_ac()
                 eff_mode, eff_args = self._effective_mode_args(mode, args, automation, on_ac)
                 changed = eff_mode != self._last_logged_mode
@@ -402,6 +416,9 @@ class PowerDaemon:
         )
         while not self._stop_monitor_evt.wait(_POWER_MONITOR_POLL_S):
             try:
+                if self._adaptive_running:
+                    self._last_ac_state = _on_ac()
+                    continue
                 current_ac = _on_ac()
                 if current_ac != self._last_ac_state:
                     prev_state = "AC" if self._last_ac_state else "battery"
@@ -641,9 +658,160 @@ class PowerDaemon:
         output = self.apply_preset_state_once(state)
         return {"ok": True, "output": output}
 
+    def _build_adaptive_args(self, state, preset, sample, caps):
+        from Assets.engine import adaptive
+        is_apu = cfg.get("Info", "Type") == "Amd_Apu"
+        if sample.cpu_load is None:
+            return ""
+        temp = int(sample.cpu_temp) if sample.cpu_temp is not None else 0
+        load = int(sample.cpu_load)
+        parts = []
+        if state.tick < 2:
+            cmd = ""
+            for _ in range(3):
+                step = adaptive.update_power_limit(
+                    state, temp, load, preset.power, preset.power - 5, preset.max_temp, is_apu)
+                if step:
+                    cmd = step
+            if cmd:
+                parts.append(cmd)
+            state.tick += 1
+            return " ".join(parts)
+        cmd = adaptive.update_power_limit(
+            state, temp, load, preset.power, 8, preset.max_temp, is_apu)
+        if cmd:
+            parts.append(cmd)
+        if preset.enable_co:
+            cmd = adaptive.curve_optimiser(state, load, preset.co_max)
+            if cmd:
+                parts.append(cmd)
+        if (preset.enable_igpu and sample.igpu_load is not None and sample.igpu_clk is not None
+                and sample.mem_clk is not None and sample.cpu_clk is not None):
+            cmd = adaptive.update_igpu_clock(
+                state, preset.igpu_max, preset.igpu_min, preset.max_temp,
+                temp, int(sample.igpu_clk), int(sample.igpu_load), int(sample.mem_clk),
+                int(sample.cpu_clk), preset.min_cpu_clk)
+            if cmd:
+                parts.append(cmd)
+        return " ".join(parts)
+
+    def _build_adaptive_static(self, preset):
+        parts = []
+        if preset.enable_asus:
+            parts.append(f"--sys-asus-mode={preset.asus_mode}")
+        if preset.enable_nvidia:
+            parts.append(
+                f"--nvidia-clocks={preset.nv_max_clk},{preset.nv_core_offset},"
+                f"{preset.nv_mem_offset},{preset.nv_power_limit}")
+        return " ".join(parts)
+
+    def _adaptive_tick_args(self, sample):
+        static = self._build_adaptive_static(self._adaptive_preset)
+        dynamic = self._build_adaptive_args(
+            self._adaptive_state, self._adaptive_preset, sample, self._adaptive_caps)
+        return " ".join(part for part in (static, dynamic) if part)
+
+    def _adaptive_body(self, interval):
+        from Assets.system import sensors
+        self._stop_adaptive_evt.clear()
+        log.info("Adaptive loop started (preset='%s', interval=%ds).",
+                 self._adaptive_preset_name, interval)
+        sensors.sample()
+        while not self._stop_adaptive_evt.wait(interval):
+            try:
+                sample = sensors.sample()
+                merged = self._adaptive_tick_args(sample)
+                if merged:
+                    self._apply_once(merged, "Adaptive", reason="adaptive")
+                with self._lock:
+                    self._adaptive_sample = sample
+                    self._adaptive_applied = merged or self._adaptive_applied
+            except Exception as exc:
+                log.warning("Adaptive loop error: %s", exc)
+        with self._lock:
+            self._adaptive_running = False
+        log.debug("Adaptive loop exited.")
+
+    def _stop_adaptive(self):
+        self._stop_adaptive_evt.set()
+        if self._adaptive_thread and self._adaptive_thread.is_alive():
+            self._adaptive_thread.join(timeout=_STOP_LOOP_TIMEOUT_S)
+
+    def _adaptive_interval(self):
+        try:
+            value = float(cfg.get("Adaptive", "interval", "2"))
+        except (TypeError, ValueError):
+            value = 2.0
+        return min(8.0, max(1.0, value))
+
+    def _cmd_adaptive_start(self, msg):
+        from Assets.engine import adaptive
+        from Assets.system import sensors
+        from Assets.tuning import adaptivemanager
+        cfg.load()
+        name = msg.get("preset", "")
+        values = msg.get("values")
+        if values is not None:
+            known = {f.name for f in dataclass_fields(adaptivemanager.AdaptivePreset)}
+            preset = adaptivemanager.AdaptivePreset(
+                **{k: v for k, v in values.items() if k in known})
+        else:
+            preset = adaptivemanager.get(name)
+        if preset is None:
+            return {"ok": False, "error": f"adaptive preset not found: {name!r}"}
+        self._stop_adaptive()
+        caps = sensors.capabilities()
+        with self._lock:
+            self._adaptive_preset_name = name
+            self._adaptive_preset = preset
+            self._adaptive_state = adaptive.AdaptiveState()
+            self._adaptive_caps = caps
+            self._adaptive_running = True
+            self._adaptive_applied = ""
+        interval = self._adaptive_interval()
+        static = self._build_adaptive_static(preset)
+        if static:
+            self._apply_once(static, "Adaptive", reason="adaptive static settings")
+        self._adaptive_thread = threading.Thread(
+            target=self._adaptive_body, args=(interval,), daemon=True, name="uxtu-adaptive")
+        self._adaptive_thread.start()
+        return {"ok": True, "caps": sorted(caps)}
+
+    def _cmd_adaptive_stop(self, _msg):
+        self._stop_adaptive()
+        with self._lock:
+            self._adaptive_running = False
+        log.info("Adaptive turned off.")
+        try:
+            revert = self._cmd_apply_saved({})
+        except Exception as exc:
+            log.warning("Adaptive stop: revert to saved preset failed: %s", exc)
+            return {"ok": True, "reverted": False}
+        return {"ok": True, "reverted": bool(revert.get("ok"))}
+
+    def _cmd_adaptive_status(self, _msg):
+        with self._lock:
+            sample = self._adaptive_sample
+            data = {}
+            if sample is not None:
+                data = {
+                    "cpu_temp": sample.cpu_temp, "cpu_load": sample.cpu_load,
+                    "cpu_power": sample.cpu_power, "cpu_clk": sample.cpu_clk,
+                    "igpu_load": sample.igpu_load, "igpu_clk": sample.igpu_clk,
+                }
+            return {
+                "ok": True,
+                "running": self._adaptive_running,
+                "preset": self._adaptive_preset_name,
+                "sample": data,
+                "applied": self._adaptive_applied,
+                "caps": sorted(self._adaptive_caps),
+            }
+
     def _cmd_shutdown(self, _msg: dict) -> dict:
         self._stop_loop()
         self._stop_monitor()
+        self._stop_adaptive()
         self._stop_suspend_monitor()
         return {"ok": True}
 
@@ -831,15 +999,23 @@ def main() -> None:
         log.debug("SMN interface available: %s", smu.has_smn())
 
     daemon = PowerDaemon()
-    on_ready = (
-        (lambda: _apply_on_start(daemon))
-        if cfg.get("Settings", "ApplyOnStart", "0") == "1"
-        else None
-    )
-    if on_ready is None:
-        log.info("ApplyOnStart is disabled — no preset applied at startup.")
 
-    daemon.run(on_ready=on_ready)
+    def _on_ready():
+        if cfg.get("Settings", "ApplyOnStart", "0") == "1":
+            _apply_on_start(daemon)
+        else:
+            log.info("ApplyOnStart is disabled — no preset applied at startup.")
+        auto_adaptive = (cfg.get("Adaptive", "enabled", "0") == "1"
+                         or cfg.get("Settings", "AutoStartAdaptive", "0") == "1")
+        if auto_adaptive:
+            preset = cfg.get("Adaptive", "preset", "")
+            if preset:
+                log.info("Auto-starting Adaptive preset '%s' at startup.", preset)
+                daemon._cmd_adaptive_start({"preset": preset})
+            else:
+                log.info("Auto Start Adaptive is on but no Adaptive preset is saved yet.")
+
+    daemon.run(on_ready=_on_ready)
 
 
 if __name__ == "__main__":

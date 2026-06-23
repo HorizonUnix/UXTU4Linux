@@ -9,11 +9,11 @@ from textual.app import App, ComposeResult
 from textual.widgets import Static, TabbedContent, TabPane, Footer
 
 from Assets.core import config as cfg
-from Assets.tui import helpers as banner
+from Assets.tui import helpers
 from Assets.tui.tabs import (
-    HomeTab, PowerTab, CustomEditor, AutomationsTab, SettingsTab, HardwareTab, StatusTab)
+    HomeTab, PowerTab, CustomEditor, AdaptiveTab, AutomationsTab, SettingsTab, HardwareTab, StatusTab)
 
-_PAGES = ["home", "power", "custom", "automations", "hardware", "status", "settings"]
+_PAGES = ["home", "power", "custom", "adaptive", "automations", "hardware", "status", "settings"]
 
 
 class U4LApp(App):
@@ -31,18 +31,19 @@ class U4LApp(App):
         ("h", "show_tab('home')", "Home"),
         ("1", "show_tab('power')", "Premade"),
         ("2", "show_tab('custom')", "Custom"),
-        ("3", "show_tab('automations')", "Auto"),
-        ("4", "show_tab('hardware')", "Info"),
-        ("5", "show_tab('status')", "Status"),
-        ("6", "show_tab('settings')", "Settings"),
+        ("3", "show_tab('adaptive')", "Adaptive"),
+        ("4", "show_tab('automations')", "Auto"),
+        ("5", "show_tab('hardware')", "Info"),
+        ("6", "show_tab('status')", "Status"),
+        ("7", "show_tab('settings')", "Settings"),
         ("question_mark", "about", "About"),
         ("escape", "focus_tabs", "Tabs"),
         ("q", "quit", "Quit"),
     ]
 
     def compose(self) -> ComposeResult:
-        yield Static(banner.BANNER, id="banner")
-        yield Static(banner.status_line(), id="hwline")
+        yield Static(helpers.BANNER, id="banner")
+        yield Static(helpers.status_line(), id="hwline")
         yield Static("", id="statusline")
         with TabbedContent(initial="home", id="tabs"):
             with TabPane("Home", id="home"):
@@ -51,6 +52,8 @@ class U4LApp(App):
                 yield PowerTab()
             with TabPane("Custom", id="custom"):
                 yield CustomEditor()
+            with TabPane("Adaptive", id="adaptive"):
+                yield AdaptiveTab()
             with TabPane("Auto", id="automations"):
                 yield AutomationsTab()
             with TabPane("Info", id="hardware"):
@@ -126,7 +129,7 @@ class U4LApp(App):
             self.query_one("#too_small", Static).update("Terminal too small — minimum is 50×25.")
             return
         self.query_one("#banner", Static).update(
-            banner.WORDMARK if size.width < 62 else banner.BANNER)
+            helpers.WORDMARK if size.width < 62 else helpers.BANNER)
 
     _reaper_stop = False
     _reaper_started = False
