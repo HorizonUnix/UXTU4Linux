@@ -1,3 +1,36 @@
+## [1.0.0]
+
+UXTU4Linux reaches 1.0.0. The headline addition is Adaptive Mode: instead of holding one fixed preset, the app now tunes your CPU live from temperature and load. The Home tab gained live graphs, Automations were rebuilt to be simpler, and the whole codebase was reorganized underneath.
+
+> **Updating from v0.9.x?** v1.0.0 adds one new dependency (`textual-plotext`, used for the Home graphs). Re-run the installer above to pick it up while keeping your settings and custom presets.
+
+Prefer not to reinstall? Add it to the existing environment by hand, then restart the daemon:
+
+```bash
+/opt/uxtu4linux/venv/bin/pip install textual-plotext
+sudo systemctl restart uxtu4linux.service
+```
+
+### Adaptive Mode
+- **Live tuning.** A new Adaptive Mode tab raises and lowers your power limit from temperature and load, keeping the chip as fast as it can run within the temperature you set.
+- **More than power.** It can also tune the all-core Curve Optimiser, push and pull the iGPU clocks, hold an ASUS power profile and tune an NVIDIA dGPU, all on the same loop.
+- **Your own adaptive presets.** Save, duplicate and delete adaptive presets just like custom ones, and have the daemon start your chosen one automatically on boot.
+
+### Live Home dashboard
+- **Real-time graphs.** The Home tab now plots CPU temperature, power, clock and usage as they happen, alongside the quick links to every other tab.
+
+### Automations
+- **Remove Override switch.** Automations are active whenever you set a Battery Charge or Battery Discharge preset. Leave a slot empty to keep whatever is already applied for that power state.
+- **Apply any time.** Applying a preset by hand is no longer blocked while automations are set; the automation simply re-applies the right preset on the next AC/battery change.
+
+### Settings
+- **Choose your starting tab.** Pick which tab the app opens on from Settings.
+
+### Under the hood
+- A large reorganization of the daemon and the interface into smaller, focused modules, plus dead-code cleanup, for a cleaner and more maintainable foundation.
+
+**Full changelog:** https://github.com/HorizonUnix/UXTU4Linux/compare/0.9.1...1.0.0
+
 ## [0.9.1]
 
 ### NVIDIA Tuning
