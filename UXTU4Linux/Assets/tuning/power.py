@@ -54,13 +54,11 @@ def apply_preset(args: str, mode: str) -> dict:
         return {"ok": False, "error": "Daemon is not running."}
 
     interval = cfg.parse_interval(cfg.get("Settings", "Time", "3"), default=3)
-    automation = cfg.get("Automations", "Enabled", "0") == "1"
+    automation = bool(cfg.get("Automations", "OnAC", "") or cfg.get("Automations", "OnBattery", ""))
     reapply = cfg.get("Settings", "ReApply", "0") == "1"
 
     if reapply:
         return client.apply_loop(args=args, mode=mode, interval=interval, automation=automation)
-    if automation:
-        return client.apply_saved()
     return client.apply(args=args, mode=mode)
 
 

@@ -1,0 +1,95 @@
+from __future__ import annotations
+
+import math
+
+from textual.app import ComposeResult
+from textual.containers import Grid, Vertical, VerticalScroll
+from textual.widgets import Button, Static
+from textual_plotext import PlotextPlot
+
+from Assets.core import config as cfg
+
+
+class HomeTab(VerticalScroll):
+    _NAV = (
+        ("Premade Presets", "power"),
+        ("Custom Presets", "custom"),
+        ("Adaptive Mode", "adaptive"),
+        ("Automations", "automations"),
+    )
+
+    _GRAPHS = (
+        ("cpu_temp", "CPU Temperature", "°C", (-10, 110)),
+        ("cpu_power", "CPU Power", "W", None),
+        ("cpu_clk", "CPU Clock", "MHz", None),
+        ("cpu_load", "CPU Usage", "%", (-10, 100)),
+    )
+
+    _WINDOW = 30
+
+    def compose(self) -> ComposeResult:
+        from Assets.system import sensors
+        self._caps = sensors.capabilities()
+        self._series = {}
+        self._ranges = {key: rng for key, _t, _u, rng in self._GRAPHS}
+        max_clock = cfg.get("Info", "MaxClock", "")
+        if max_clock.isdigit() and int(max_clock) > 0:
+            self._ranges["cpu_clk"] = (0, int(max_clock))
+        active = [g for g in self._GRAPHS if g[0] in self._caps]
+        if active:
+            with Grid(classes="graph_grid"):
+                for key, title, _unit, _rng in active:
+                    self._series[key] = []
+                    with Vertical(classes="settings_card graph_card"):
+                        yield Static(title, classes="card_title")
+                        yield Static("", id=f"graph_value_{key}", classes="graph_value")
+                        yield Static("", id=f"graph_minmax_{key}", classes="graph_minmax")
+                        yield PlotextPlot(id=f"graph_{key}")
+        with Vertical(classes="settings_card"):
+            yield Static("Go to", classes="card_title")
+            with Grid(classes="home_grid"):
+                for label, tab in self._NAV:
+                    yield Button(label, id=f"home-{tab}", variant="primary")
+
+    def on_mount(self) -> None:
+        self._poll()
+        self.set_interval(1.0, self._poll)
+
+    def _poll(self) -> None:
+        from Assets.system import sensors
+        snapshot = sensors.sample()
+        for key, title, unit, _rng in self._GRAPHS:
+            if key not in self._series:
+                continue
+            rng = self._ranges.get(key)
+            value = getattr(snapshot, key)
+            if value is None:
+                continue
+            series = self._series[key]
+            series.append(float(value))
+            del series[:-self._WINDOW]
+            plot = self.query_one(f"#graph_{key}", PlotextPlot)
+            plot.plt.clear_data()
+            plot.plt.plot(series, marker="braille", color="cyan")
+            plot.plt.frame(False)
+            plot.plt.xticks([])
+            plot.plt.yticks([])
+            if rng is not None:
+                plot.plt.ylim(rng[0], rng[1])
+            else:
+                hi_v = max(series)
+                ceiling = math.ceil(hi_v / 50) * 50 if hi_v > 0 else 50
+                plot.plt.ylim(-10, ceiling)
+            plot.refresh()
+            unit_sfx = f" [dim]{unit}[/]" if unit else ""
+            mm_sfx = f" {unit}" if unit else ""
+            self.query_one(f"#graph_value_{key}", Static).update(
+                f"[b]{round(value)}[/]{unit_sfx}")
+            self.query_one(f"#graph_minmax_{key}", Static).update(
+                f"Min {round(min(series))}{mm_sfx} • Max {round(max(series))}{mm_sfx}")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        bid = event.button.id or ""
+        if bid.startswith("home-"):
+            self.app.set_focus(None)
+            self.app.action_show_tab(bid[len("home-"):])

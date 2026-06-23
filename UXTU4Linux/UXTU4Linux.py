@@ -7,7 +7,7 @@ if _ROOT not in sys.path:
 
 import fcntl as _fcntl
 from Assets.core import config as cfg
-from Assets.core.hardware import check_binaries, check_ryzen_smu
+from Assets.core.hardware import check_binaries, check_ryzen_smu, ensure_max_clock
 from Assets.tuning.power import get_presets
 from Assets.flows.setup import check_integrity, init_config, needs_setup, ensure_custom_presets_file
 from Assets.daemon.service import service_path_stale
@@ -55,6 +55,9 @@ def main() -> None:
     else:
         check_integrity()
     cfg.load()
+
+    if not first_run:
+        ensure_max_clock()
 
     if not dep_error and cfg.get("Info", "Type") == "Intel":
         dep_error = "Intel CPUs are not supported.\n\nUXTU4Linux only supports AMD Ryzen APUs and desktop CPUs."

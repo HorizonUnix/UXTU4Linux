@@ -912,10 +912,6 @@ def delete_preset(display_name: str) -> None:
         bat_slot = ""
         changed = True
 
-    if not ac_slot and not bat_slot:
-        cfg.set_config("Automations", "Enabled", "0")
-        changed = True
-
     if changed:
         cfg.save()
         try:

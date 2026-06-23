@@ -292,6 +292,10 @@ SetupWizard {
     width: 14;
 }
 
+#set-default-tab {
+    width: 25;
+}
+
 ConfirmModal, PresetPickerModal, DaemonLogModal, HardwareInfoModal, FatalErrorModal, StalePathModal, ManualDaemonModal {
     align: center middle;
 }
@@ -583,6 +587,16 @@ AboutModal, UpdaterModal, UpdateProgressModal, SudoModal {
 .graph_card {
     height: auto;
     width: 1fr;
+}
+
+.graph_value {
+    color: $text;
+    margin-top: 1;
+}
+
+.graph_minmax {
+    color: $text-muted;
+    text-style: dim;
 }
 
 .graph_card PlotextPlot {

@@ -434,6 +434,29 @@ def _detect_framework_variant() -> str:
     return ""
 
 
+def _speed_mhz(value: str) -> int:
+    token = value.split()[0] if value else ""
+    return int(token) if token.isdigit() else 0
+
+
+def parse_max_clock(raw: str) -> int:
+    peak = max(_speed_mhz(_extract(raw, "Max Speed")),
+               _speed_mhz(_extract(raw, "Current Speed")))
+    if peak <= 0:
+        return 0
+    return ((peak + 499) // 500) * 500
+
+
+def ensure_max_clock() -> None:
+    current = cfg.get("Info", "MaxClock", "")
+    if current.isdigit() and int(current) > 0:
+        return
+    max_clock = parse_max_clock(_dmi_raw("processor"))
+    if max_clock:
+        cfg.set_config("Info", "MaxClock", str(max_clock))
+        cfg.save()
+
+
 def detect() -> None:
     for key, field in {"CPU": "Version", "Signature": "Signature"}.items():
         cfg.set_config("Info", key, _dmi(field))
@@ -441,6 +464,7 @@ def detect() -> None:
 
     variant = _detect_framework_variant()
     cfg.set_config("Info", "Variant", variant)
+    cfg.set_config("Info", "MaxClock", str(parse_max_clock(_dmi_raw("processor"))))
 
     cfg.save()
 

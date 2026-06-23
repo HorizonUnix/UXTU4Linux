@@ -73,6 +73,18 @@ def do_apply(args: str, mode: str) -> dict:
     return apply_preset(args, mode)
 
 
+ADAPTIVE_ON_MSG = (
+    "Adaptive Mode is running. Stop it in the Adaptive tab to apply a preset manually."
+)
+
+
+def adaptive_running() -> bool:
+    try:
+        return bool(get_client().adaptive_status().get("running"))
+    except Exception:
+        return False
+
+
 async def ensure_sudo(app) -> bool:
     from Assets.daemon.service import sudo_available
     if sudo_available():

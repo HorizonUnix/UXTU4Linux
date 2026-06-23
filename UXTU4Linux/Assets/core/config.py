@@ -3,8 +3,8 @@ import tempfile
 from configparser import ConfigParser
 from pathlib import Path
 
-LOCAL_VERSION = "0.9.2"
-LOCAL_BUILD = "9-beta-23Jun26-adaptiveTest1"
+LOCAL_VERSION = "1.0.0"
+LOCAL_BUILD = "M1-beta-23Jun26"
 
 GITHUB_API_URL = "https://api.github.com/repos/HorizonUnix/UXTU4Linux/releases/latest"
 LATEST_VER_URL = "https://github.com/HorizonUnix/UXTU4Linux/releases/latest"
@@ -75,8 +75,19 @@ def save() -> None:
 
 def _render() -> str:
     from io import StringIO
+    ordered = ConfigParser()
+    section_order = _SECTION_ORDER + [s for s in _cfg.sections() if s not in _SECTION_ORDER]
+    for section in section_order:
+        if not _cfg.has_section(section):
+            continue
+        ordered.add_section(section)
+        existing = list(_cfg[section].keys())
+        schema = REQUIRED.get(section, [])
+        keys = [k for k in schema if k in existing] + [k for k in existing if k not in schema]
+        for key in keys:
+            ordered.set(section, key, _cfg.get(section, key, raw=True))
     buf = StringIO()
-    _cfg.write(buf)
+    ordered.write(buf)
     return buf.getvalue()
 
 
@@ -111,10 +122,13 @@ def instance() -> ConfigParser:
     return _cfg
 
 
+_SECTION_ORDER = ["User", "Settings", "Automations", "Adaptive", "Info"]
+
+
 REQUIRED: dict[str, list[str]] = {
     "User": ["mode"],
-    "Settings": ["time", "reapply", "applyonstart", "autostartadaptive", "softwareupdate", "debug"],
-    "Info": ["cpu", "signature", "architecture", "family", "type", "variant"],
-    "Automations": ["enabled", "onac", "onbattery", "onresume"],
+    "Settings": ["time", "reapply", "applyonstart", "autostartadaptive", "softwareupdate", "debug", "defaulttab"],
+    "Info": ["cpu", "signature", "architecture", "family", "type", "variant", "maxclock"],
+    "Automations": ["onac", "onbattery", "onresume"],
     "Adaptive": ["enabled", "preset", "interval"],
 }

@@ -10,8 +10,14 @@ from textual.widgets import Static, TabbedContent, TabPane, Footer
 
 from Assets.core import config as cfg
 from Assets.tui import helpers
-from Assets.tui.tabs import (
-    HomeTab, PowerTab, CustomEditor, AdaptiveTab, AutomationsTab, SettingsTab, HardwareTab, StatusTab)
+from Assets.tui.tabs.homeView import HomeTab
+from Assets.tui.tabs.premadeView import PowerTab
+from Assets.tui.tabs.customView import CustomEditor
+from Assets.tui.tabs.adaptiveView import AdaptiveTab
+from Assets.tui.tabs.automationsView import AutomationsTab
+from Assets.tui.tabs.settingsView import SettingsTab
+from Assets.tui.tabs.infoView import HardwareTab
+from Assets.tui.tabs.statusView import StatusTab
 
 _PAGES = ["home", "power", "custom", "adaptive", "automations", "hardware", "status", "settings"]
 
@@ -45,7 +51,10 @@ class U4LApp(App):
         yield Static(helpers.BANNER, id="banner")
         yield Static(helpers.status_line(), id="hwline")
         yield Static("", id="statusline")
-        with TabbedContent(initial="home", id="tabs"):
+        initial = cfg.get("Settings", "DefaultTab", "home")
+        if initial not in _PAGES:
+            initial = "home"
+        with TabbedContent(initial=initial, id="tabs"):
             with TabPane("Home", id="home"):
                 yield HomeTab()
             with TabPane("Premade", id="power"):

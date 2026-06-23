@@ -14,7 +14,7 @@ def _apply_defaults() -> None:
         ("Settings", "ReApply"): "0",
         ("Settings", "ApplyOnStart"): "0",
         ("Settings", "Debug"): "0",
-        ("Automations", "Enabled"): "0",
+        ("Settings", "DefaultTab"): "home",
         ("Automations", "OnAC"): "",
         ("Automations", "OnBattery"): "",
         ("Automations", "OnResume"): "",
@@ -49,8 +49,9 @@ def needs_setup() -> bool:
 _CFG_DEFAULTS: dict[str, dict[str, str]] = {
     "User": {"mode": ""},
     "Settings": {"time": "3", "reapply": "0", "applyonstart": "0",
-                 "autostartadaptive": "0", "softwareupdate": "1", "debug": "0"},
-    "Automations": {"enabled": "0", "onac": "", "onbattery": "", "onresume": ""},
+                 "autostartadaptive": "0", "softwareupdate": "1", "debug": "0",
+                 "defaulttab": "home"},
+    "Automations": {"onac": "", "onbattery": "", "onresume": ""},
     "Adaptive": {"enabled": "0", "preset": "", "interval": "2"},
 }
 
