@@ -139,7 +139,7 @@ def _current_clk(path):
         return None
     for line in text.splitlines():
         if "*" in line:
-            match = re.search(r"(\d+)\s*Mhz", line, re.IGNORECASE)
+            match = re.search(r"(\d+)\s*MHz", line, re.IGNORECASE)
             if match:
                 return float(match.group(1))
     return None
@@ -173,9 +173,11 @@ def _mem_clk():
 def _reconcile(trusted, secondary, tolerance, label):
     if trusted is None:
         return secondary
-    if secondary is not None and abs(trusted - secondary) > tolerance:
-        log.debug("pm_table %s cross-check exceeded tolerance %s (keeping hwmon value)",
-                  label, tolerance)
+    if secondary is not None:
+        diff = abs(trusted - secondary)
+        if diff > tolerance:
+            log.debug("pm_table %s cross-check exceeded tolerance: diff=%s tolerance=%s "
+                      "(keeping hwmon value)", label, diff, tolerance)
     return trusted
 
 
