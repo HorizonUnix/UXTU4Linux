@@ -153,7 +153,7 @@ class LoopsMixin:
     def _suspend_monitor_body(self) -> None:
         self._stop_suspend_evt.clear()
         try:
-            last_gap = _clock_boottime() - time.monotonic()
+            last_boottime_offset = _clock_boottime() - time.monotonic()
         except OSError as exc:
             log.warning(
                 "CLOCK_BOOTTIME unavailable — suspend/resume detection disabled: %s", exc
@@ -166,15 +166,15 @@ class LoopsMixin:
         )
         while not self._stop_suspend_evt.wait(_SUSPEND_MONITOR_POLL_S):
             try:
-                current_gap = _clock_boottime() - time.monotonic()
-                delta = current_gap - last_gap
-                if delta > _SUSPEND_GAP_THRESHOLD_S:
+                current_boottime_offset = _clock_boottime() - time.monotonic()
+                slept = current_boottime_offset - last_boottime_offset
+                if slept > _SUSPEND_GAP_THRESHOLD_S:
                     cfg.load()
                     preset_name = cfg.get("Automations", "OnResume", "")
                     if not preset_name:
                         log.info(
                             "Woke from suspend (slept ~%s) — no On Resume preset configured.",
-                            _fmt_duration(delta),
+                            _fmt_duration(slept),
                         )
                     else:
                         result = _resolve_preset_args(preset_name)
@@ -182,7 +182,7 @@ class LoopsMixin:
                             mode, args = result
                             self._apply_once(
                                 args, mode,
-                                reason=f"woke from suspend after ~{_fmt_duration(delta)}",
+                                reason=f"woke from suspend after ~{_fmt_duration(slept)}",
                             )
                             self._last_logged_mode = mode
                         else:
@@ -190,7 +190,7 @@ class LoopsMixin:
                                 "Woke from suspend, but the On Resume preset '%s' no longer exists — nothing applied.",
                                 _dn(preset_name),
                             )
-                last_gap = current_gap
+                last_boottime_offset = current_boottime_offset
             except Exception as exc:
                 log.warning("Suspend monitor tick error: %s", exc)
         log.debug("Suspend monitor exited.")

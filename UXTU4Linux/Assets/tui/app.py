@@ -232,17 +232,16 @@ class U4LApp(App):
     def _prompt_startup_update(self, channel: str, version: str) -> None:
         from Assets.tui.modals import ConfirmModal
         from Assets.tui.modals import UpdateProgressModal
-        from Assets.flows.updater import _STABLE_URL, _BETA_URL
+        from Assets.flows.updater import release_url
         if isinstance(self.screen, ConfirmModal):
             return
         if channel == "beta":
             message = ("You are running a beta build.\n\n"
                        "Reinstall the latest beta build? Beta builds are unstable and may "
                        "change without notice.")
-            url = _BETA_URL
         else:
             message = f"A new version is available: {version}\n\nUpdate now?"
-            url = _STABLE_URL
+        url = release_url(channel)
         self.push_screen(ConfirmModal(message),
                          lambda ok: self.push_screen(UpdateProgressModal(url)) if ok else None)
 

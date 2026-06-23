@@ -26,16 +26,18 @@ def _clock_boottime() -> float:
 
 def _acquire_daemon_lock() -> bool:
     global _daemon_lock_fh
+    lock_fh = None
     try:
-        _daemon_lock_fh = open(_DAEMON_LOCK_FILE, "w")
-        fcntl.flock(_daemon_lock_fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        _daemon_lock_fh.write(str(os.getpid()))
-        _daemon_lock_fh.flush()
-        atexit.register(_daemon_lock_fh.close)
+        lock_fh = open(_DAEMON_LOCK_FILE, "w")
+        fcntl.flock(lock_fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        lock_fh.write(str(os.getpid()))
+        lock_fh.flush()
+        _daemon_lock_fh = lock_fh
+        atexit.register(lock_fh.close)
         return True
     except (IOError, OSError):
-        if _daemon_lock_fh is not None:
-            _daemon_lock_fh.close()
+        if lock_fh is not None:
+            lock_fh.close()
         return False
 
 
@@ -125,7 +127,7 @@ def _fmt_duration(seconds: float) -> str:
     return f"{seconds / 3600:.1f}h"
 
 
-_smu_blocked_warned = False
+_smu_state = {"warned": False}
 
 
 def _smu_blocked() -> str | None:
@@ -138,7 +140,6 @@ def _smu_blocked() -> str | None:
 
 
 def _apply_via_smu(args: str, mode: str) -> tuple[str, bool]:
-    global _smu_blocked_warned
     family = cfg.get("Info", "Family")
     if not args.strip():
         return "", False
@@ -147,12 +148,12 @@ def _apply_via_smu(args: str, mode: str) -> tuple[str, bool]:
         return "", False
     blocked = _smu_blocked()
     if blocked:
-        if not _smu_blocked_warned:
-            _smu_blocked_warned = True
+        if not _smu_state["warned"]:
+            _smu_state["warned"] = True
             log.error("%s — presets cannot be applied.\nInstall guide: %s", blocked, cfg.RYZEN_SMU_WIKI_URL)
         return f"{blocked} — preset not applied", False
-    if _smu_blocked_warned:
-        _smu_blocked_warned = False
+    if _smu_state["warned"]:
+        _smu_state["warned"] = False
         log.info("ryzen_smu is available again — presets can be applied.")
     try:
         from Assets.engine import runner

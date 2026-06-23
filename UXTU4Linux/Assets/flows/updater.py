@@ -12,6 +12,10 @@ _STABLE_URL = "https://github.com/HorizonUnix/UXTU4Linux/releases/latest/downloa
 _BETA_URL = "https://github.com/HorizonUnix/UXTU4Linux/releases/download/U4L-Beta/UXTU4Linux.zip"
 
 
+def release_url(channel: str = "stable") -> str:
+    return _BETA_URL if channel == "beta" else _STABLE_URL
+
+
 def _ver_tuple(v: str) -> tuple:
     try:
         base = v.strip().lstrip("v")

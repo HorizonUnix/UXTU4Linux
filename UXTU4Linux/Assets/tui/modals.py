@@ -314,13 +314,13 @@ class UpdaterModal(ModalScreen):
             beta_btn.disabled = True
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        from Assets.flows.updater import _STABLE_URL, _BETA_URL
+        from Assets.flows.updater import release_url
         if event.button.id == "upd_do":
-            self.app.push_screen(UpdateProgressModal(_STABLE_URL))
+            self.app.push_screen(UpdateProgressModal(release_url("stable")))
         elif event.button.id == "upd_beta":
             self.app.push_screen(
                 ConfirmModal("Switch to the beta build? Beta builds are unstable and may be broken."),
-                lambda ok: self.app.push_screen(UpdateProgressModal(_BETA_URL)) if ok else None)
+                lambda ok: self.app.push_screen(UpdateProgressModal(release_url("beta"))) if ok else None)
         else:
             self.dismiss()
 

@@ -15,7 +15,7 @@ PROC_STAT = "/proc/stat"
 PROC_CPUINFO = "/proc/cpuinfo"
 
 _cache = {}
-_prev_stat = None
+_load_state = {"prev": None}
 
 
 @dataclass
@@ -34,9 +34,8 @@ class SensorSample:
 
 
 def reset_cache():
-    global _prev_stat
     _cache.clear()
-    _prev_stat = None
+    _load_state["prev"] = None
 
 
 def _read_text(path):
@@ -118,7 +117,6 @@ def _cpu_clk():
 
 
 def _cpu_load():
-    global _prev_stat
     text = _read_text(PROC_STAT)
     if not text:
         return None
@@ -131,8 +129,8 @@ def _cpu_load():
         return None
     idle = nums[3] + nums[4]
     total = sum(nums)
-    previous = _prev_stat
-    _prev_stat = (total, idle)
+    previous = _load_state["prev"]
+    _load_state["prev"] = (total, idle)
     if previous is None or total <= previous[0]:
         return None
     return (1.0 - (idle - previous[1]) / (total - previous[0])) * 100.0

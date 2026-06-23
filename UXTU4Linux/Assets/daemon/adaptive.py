@@ -13,6 +13,7 @@ class AdaptiveMixin:
         from Assets.engine import adaptive
         is_apu = cfg.get("Info", "Type") == "Amd_Apu"
         if sample.cpu_load is None:
+            log.debug("Adaptive args skipped: CPU load unavailable this tick.")
             return ""
         temp = int(sample.cpu_temp) if sample.cpu_temp is not None else 0
         load = int(sample.cpu_load)

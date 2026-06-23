@@ -503,16 +503,14 @@ def _detect_nv_power_limit() -> bool:
         lib.nvmlShutdown()
 
 
-_nv_power_info_cached = False
-_nv_power_info: tuple[int, int, int] | None = None
+_nv_power_cache: dict = {"cached": False, "info": None}
 
 
 def _nv_power_constraints() -> tuple[int, int, int] | None:
-    global _nv_power_info, _nv_power_info_cached
-    if not _nv_power_info_cached:
-        _nv_power_info = _read_nv_power_constraints()
-        _nv_power_info_cached = True
-    return _nv_power_info
+    if not _nv_power_cache["cached"]:
+        _nv_power_cache["info"] = _read_nv_power_constraints()
+        _nv_power_cache["cached"] = True
+    return _nv_power_cache["info"]
 
 
 def _read_nv_power_constraints() -> tuple[int, int, int] | None:
