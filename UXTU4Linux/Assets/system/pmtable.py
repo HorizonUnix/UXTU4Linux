@@ -1,3 +1,4 @@
+import math
 import struct
 
 PM_TABLE_PATH = "/sys/kernel/ryzen_smu_drv/pm_table"
@@ -114,7 +115,7 @@ def _value(data, offset):
     if offset is None or offset + 4 > len(data):
         return None
     result = struct.unpack_from("<f", data, offset)[0]
-    if result != result:
+    if math.isnan(result):
         return None
     return result
 

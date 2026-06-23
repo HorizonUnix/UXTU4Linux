@@ -171,12 +171,12 @@ def _mem_clk():
 
 
 def _reconcile(trusted, secondary, tolerance, label):
-    if trusted is not None:
-        if secondary is not None and abs(trusted - secondary) > tolerance:
-            log.debug("pm_table %s mismatch: trusted=%s pm=%s (keeping trusted)",
-                      label, trusted, secondary)
-        return trusted
-    return secondary
+    if trusted is None:
+        return secondary
+    if secondary is not None and abs(trusted - secondary) > tolerance:
+        log.debug("pm_table %s cross-check exceeded tolerance %s (keeping hwmon value)",
+                  label, tolerance)
+    return trusted
 
 
 def sample():
