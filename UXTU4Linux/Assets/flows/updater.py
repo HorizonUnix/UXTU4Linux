@@ -43,6 +43,15 @@ def is_beta_build() -> bool:
     return "beta" in (cfg.LOCAL_BUILD or "").lower()
 
 
+def beta_available() -> bool:
+    api = cfg.GITHUB_API_URL.replace("/releases/latest", "/releases/tags/U4L-Beta")
+    try:
+        with urllib.request.urlopen(api, timeout=5) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+
 def perform_update(url: str = _STABLE_URL, status=None) -> dict:
     notify = status or (lambda _msg: None)
 

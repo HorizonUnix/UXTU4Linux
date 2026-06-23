@@ -7,7 +7,7 @@ from textual import work
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import Button, Input, Label, ListView, ListItem, RichLog, Static
+from textual.widgets import Button, Input, Label, RichLog, Static
 
 from Assets.core import config as cfg
 
@@ -240,41 +240,6 @@ class ConfirmModal(ModalScreen[bool]):
         self.dismiss(False)
 
 
-class PresetPickerModal(ModalScreen):
-    BINDINGS = [("escape", "cancel", "Cancel")]
-
-    def __init__(self, title: str, current: str) -> None:
-        super().__init__()
-        self._title = title
-        self._current = current
-
-    def _disp(self, key: str) -> str:
-        if key == "__none__":
-            return "(None) — use Power Management preset"
-        return key.removesuffix("_custom_preset")
-
-    def compose(self) -> ComposeResult:
-        from Assets.tuning import power, custom
-        builtin = list(power.get_presets().keys())
-        customs = custom.get_custom_preset_names()
-        self._keys = ["__none__"] + builtin + customs
-        with Vertical(id="dialog"):
-            yield Label(self._title)
-            items = []
-            for i, key in enumerate(self._keys):
-                hint = "  ← current" if key == self._current else ""
-                items.append(ListItem(Label(self._disp(key) + hint), id=f"opt-{i}"))
-            yield ListView(*items, id="picker_list")
-
-    def on_list_view_selected(self, event: ListView.Selected) -> None:
-        i = int(event.item.id.split("-")[1])
-        key = self._keys[i]
-        self.dismiss("" if key == "__none__" else key)
-
-    def action_cancel(self) -> None:
-        self.dismiss(None)
-
-
 class AboutModal(ModalScreen):
     BINDINGS = [("escape", "close", "Close")]
 
@@ -324,7 +289,7 @@ class UpdaterModal(ModalScreen):
 
     @work(thread=True, exclusive=True, group="updater")
     def _check(self) -> None:
-        from Assets.flows.updater import get_latest_version, get_changelog
+        from Assets.flows.updater import get_latest_version, get_changelog, beta_available
         try:
             latest = get_latest_version()
             changelog = get_changelog()
@@ -332,9 +297,9 @@ class UpdaterModal(ModalScreen):
             self.app.call_from_thread(
                 self.query_one("#upd_status", Static).update, f"Could not check for updates: {exc}")
             return
-        self.app.call_from_thread(self._show, latest, changelog)
+        self.app.call_from_thread(self._show, latest, changelog, beta_available())
 
-    def _show(self, latest: str, changelog: str) -> None:
+    def _show(self, latest: str, changelog: str, beta_ok: bool = True) -> None:
         from Assets.flows.updater import _ver_tuple
         up_to_date = _ver_tuple(cfg.LOCAL_VERSION) >= _ver_tuple(latest)
         self.query_one("#upd_status", Static).update(
@@ -343,6 +308,10 @@ class UpdaterModal(ModalScreen):
         btn = self.query_one("#upd_do", Button)
         btn.label = "Reinstall" if up_to_date else "Update now"
         btn.disabled = False
+        beta_btn = self.query_one("#upd_beta", Button)
+        if not beta_ok:
+            beta_btn.label = "Beta unavailable"
+            beta_btn.disabled = True
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         from Assets.flows.updater import _STABLE_URL, _BETA_URL

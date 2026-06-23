@@ -258,7 +258,7 @@ class AdaptiveTab(VerticalScroll):
                 i += 1
             adaptivemanager.save(new_name, self._collect_preset())
             self._refresh_presets(new_name)
-            self.app.notify(f"Duplicated to '{new_name}'.", title="Duplicate preset")
+            self.app.notify(f"Duplicated to '{new_name}'.", title="Duplicated")
         elif bid == "adaptive_delete":
             sel = self.query_one("#adaptive_select", Select).value
             if not isinstance(sel, str):

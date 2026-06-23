@@ -43,14 +43,11 @@ def _ensure_venv() -> bool:
     venv_dir = cfg.VENV_DIR
     venv_python = cfg.VENV_PYTHON
 
-    def _sudo(*args: str) -> int:
-        return subprocess.run(["sudo", "-n", *args]).returncode
-
     if not os.path.isfile(venv_python):
-        _sudo("mkdir", "-p", venv_dir)
-        if _sudo(sys.executable, "-m", "venv", "--without-pip", venv_dir) != 0:
+        _sudo_run("mkdir", "-p", venv_dir)
+        if _sudo_run(sys.executable, "-m", "venv", "--without-pip", venv_dir) != 0:
             return False
-        if _sudo(venv_python, "-m", "ensurepip", "--upgrade") != 0:
+        if _sudo_run(venv_python, "-m", "ensurepip", "--upgrade") != 0:
             return False
 
     probe = subprocess.run(
@@ -58,7 +55,7 @@ def _ensure_venv() -> bool:
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
     if probe.returncode != 0:
-        if _sudo(venv_python, "-m", "pip", "install", "pyzmq", "textual", "--quiet") != 0:
+        if _sudo_run(venv_python, "-m", "pip", "install", "pyzmq", "textual", "--quiet") != 0:
             return False
 
     return True

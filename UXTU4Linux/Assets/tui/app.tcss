@@ -136,12 +136,6 @@ AutomationsTab Collapsible {
     margin: 0 1 0 0;
 }
 
-.section_head {
-    text-style: bold;
-    color: $accent;
-    padding: 1 1 0 1;
-}
-
 .settings_card {
     height: auto;
     border: round $panel-lighten-1;
@@ -166,11 +160,6 @@ AutomationsTab Collapsible {
 .home_grid Button {
     width: 1fr;
     min-width: 0;
-}
-
-.home_about {
-    width: 1fr;
-    margin-top: 1;
 }
 
 .daemon_grid {
@@ -296,7 +285,7 @@ SetupWizard {
     width: 25;
 }
 
-ConfirmModal, PresetPickerModal, DaemonLogModal, HardwareInfoModal, FatalErrorModal, StalePathModal, ManualDaemonModal {
+ConfirmModal, DaemonLogModal, HardwareInfoModal, FatalErrorModal, StalePathModal, ManualDaemonModal {
     align: center middle;
 }
 
@@ -600,7 +589,7 @@ AboutModal, UpdaterModal, UpdateProgressModal, SudoModal {
 }
 
 .graph_card PlotextPlot {
-    height: 12;
+    height: 9;
     width: 1fr;
     margin-top: 1;
 }

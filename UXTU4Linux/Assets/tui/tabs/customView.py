@@ -145,7 +145,7 @@ class CustomEditor(VerticalScroll):
             new_name = unique_preset_name(source)
             self.preset_name = new_name
             self._do_save(new_name)
-            self.app.notify(f"Duplicated to '{new_name}'.", title="Duplicate preset")
+            self.app.notify(f"Duplicated to '{new_name}'.", title="Duplicated")
         elif bid == "ed_delete":
             sel = self.query_one("#preset_select", Select)
             if not isinstance(sel.value, str):

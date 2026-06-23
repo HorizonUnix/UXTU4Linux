@@ -217,10 +217,11 @@ class U4LApp(App):
 
     @work(thread=True, exclusive=True, group="startup_update")
     def _startup_update_check(self) -> None:
-        from Assets.flows.updater import is_beta_build, get_latest_version, _ver_tuple
+        from Assets.flows.updater import is_beta_build, beta_available, get_latest_version, _ver_tuple
         try:
             if is_beta_build():
-                self.call_from_thread(self._prompt_startup_update, "beta", "")
+                if beta_available():
+                    self.call_from_thread(self._prompt_startup_update, "beta", "")
             else:
                 latest = get_latest_version()
                 if _ver_tuple(cfg.LOCAL_VERSION) < _ver_tuple(latest):
