@@ -176,8 +176,13 @@ def _reconcile(trusted, secondary, tolerance, label):
     if secondary is not None:
         diff = abs(trusted - secondary)
         if diff > tolerance:
-            log.debug("pm_table %s cross-check exceeded tolerance: diff=%s tolerance=%s "
-                      "(keeping hwmon value)", label, diff, tolerance)
+            log.debug(
+                "pm_table %s cross-check exceeded tolerance: "
+                "diff=%s tolerance=%s (keeping hwmon value)",
+                label,
+                diff,
+                tolerance,
+            )
     return trusted
 
 
