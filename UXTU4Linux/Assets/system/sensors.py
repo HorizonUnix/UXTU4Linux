@@ -79,8 +79,10 @@ def _cpu_temp():
     node = None
     for label in sorted(glob.glob(os.path.join(hwmon, "temp*_label"))):
         if _read_text(label) in ("Tctl", "Tdie"):
-            node = label.replace("_label", "_input")
-            break
+            m = re.match(r"^temp(\d+)_label$", os.path.basename(label))
+            if m:
+                node = os.path.join(hwmon, f"temp{m.group(1)}_input")
+                break
     if node is None:
         node = os.path.join(hwmon, "temp1_input")
     raw = _read_text(node)
@@ -96,7 +98,10 @@ def _cpu_power():
         return None
     for label in sorted(glob.glob(os.path.join(hwmon, "power*_label"))):
         if _read_text(label) == "PPT":
-            raw = _read_text(label.replace("_label", "_input"))
+            match = re.fullmatch(r"(power\d+)_label", os.path.basename(label))
+            if not match:
+                continue
+            raw = _read_text(os.path.join(hwmon, f"{match.group(1)}_input"))
             try:
                 return int(raw) / 1000000.0
             except (TypeError, ValueError):

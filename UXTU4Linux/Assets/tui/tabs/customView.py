@@ -3,6 +3,7 @@ from __future__ import annotations
 from textual import work
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.css.query import NoMatches
 from textual.widgets import Button, Collapsible, Input, Select, Static, Switch
 
 from Assets.core import config as cfg
@@ -80,7 +81,7 @@ class CustomEditor(VerticalScroll):
             for wid in (f"#fval-{fi}", f"#fsel-{fi}"):
                 try:
                     self.query_one(wid).disabled = not event.value
-                except Exception:
+                except NoMatches:
                     pass
 
     def on_select_changed(self, event: Select.Changed) -> None:

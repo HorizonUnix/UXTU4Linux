@@ -904,12 +904,10 @@ def delete_preset(display_name: str) -> None:
 
     if ac_slot in (internal_name, base):
         cfg.set_config("Automations", "OnAC", "")
-        ac_slot = ""
         changed = True
 
     if bat_slot in (internal_name, base):
         cfg.set_config("Automations", "OnBattery", "")
-        bat_slot = ""
         changed = True
 
     if changed:
