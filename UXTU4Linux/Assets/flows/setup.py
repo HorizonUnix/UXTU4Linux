@@ -52,7 +52,7 @@ _CFG_DEFAULTS: dict[str, dict[str, str]] = {
                  "autostartadaptive": "0", "softwareupdate": "1", "debug": "0",
                  "defaulttab": "home"},
     "Automations": {"onac": "", "onbattery": "", "onresume": ""},
-    "Adaptive": {"enabled": "0", "preset": "", "interval": "2"},
+    "Adaptive": {"preset": "", "interval": "2"},
 }
 
 

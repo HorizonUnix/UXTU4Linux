@@ -229,14 +229,16 @@ def main() -> None:
             _apply_on_start(daemon)
         else:
             log.info("ApplyOnStart is disabled — no preset applied at startup.")
-        auto_adaptive = (cfg.get("Adaptive", "enabled", "0") == "1"
-                         or cfg.get("Settings", "AutoStartAdaptive", "0") == "1")
-        if auto_adaptive:
+        from Assets.daemon.adaptive import ADAPTIVE_SESSION_FILE
+        want_adaptive = cfg.get("Settings", "AutoStartAdaptive", "0") == "1"
+        resume_adaptive = os.path.exists(ADAPTIVE_SESSION_FILE)
+        if want_adaptive or resume_adaptive:
             preset = cfg.get("Adaptive", "preset", "")
             if preset:
-                log.info("Auto-starting Adaptive preset '%s' at startup.", preset)
+                reason = "auto-start is on" if want_adaptive else "it was running before the restart"
+                log.info("Starting Adaptive preset '%s' at startup (%s).", preset, reason)
                 daemon._cmd_adaptive_start({"preset": preset})
-            else:
+            elif want_adaptive:
                 log.info("Auto Start Adaptive is on but no Adaptive preset is saved yet.")
 
     daemon.run(on_ready=_on_ready)

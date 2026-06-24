@@ -51,11 +51,11 @@ def _ensure_venv() -> bool:
             return False
 
     probe = subprocess.run(
-        [venv_python, "-c", "import zmq, textual"],
+        [venv_python, "-c", "import zmq, textual, textual-plotext"],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
     if probe.returncode != 0:
-        if _sudo_run(venv_python, "-m", "pip", "install", "pyzmq", "textual", "--quiet") != 0:
+        if _sudo_run(venv_python, "-m", "pip", "install", "pyzmq", "textual", "textual-plotext", "--quiet") != 0:
             return False
 
     return True

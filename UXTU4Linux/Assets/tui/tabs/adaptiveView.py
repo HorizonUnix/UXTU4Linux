@@ -178,13 +178,12 @@ class AdaptiveTab(VerticalScroll):
     def _current_interval(self) -> str:
         return cfg.get("Adaptive", "interval", "2") or "2"
 
-    def _persist_run(self, target: str, enabled: bool) -> None:
+    def _persist_run(self, target: str) -> None:
         try:
             value = float(self.query_one("#adaptive_interval", Input).value)
         except ValueError:
             value = 2.0
         cfg.set_config("Adaptive", "interval", str(min(8.0, max(1.0, value))))
-        cfg.set_config("Adaptive", "enabled", "1" if enabled else "0")
         if target:
             cfg.set_config("Adaptive", "preset", target)
         cfg.save()
@@ -237,7 +236,7 @@ class AdaptiveTab(VerticalScroll):
             adaptivemanager.save(name, preset)
             self._refresh_presets(name)
             if self._running and name == self._running_preset:
-                self._persist_run(name, enabled=True)
+                self._persist_run(name)
                 ipc.get_client().adaptive_start(name, asdict(preset))
                 self._refresh_status()
                 self.app.notify(f"Preset '{name}' saved and applied.", title="Saved")
@@ -272,10 +271,7 @@ class AdaptiveTab(VerticalScroll):
                 cfg.save()
             if self._running and self._running_preset and \
                     self._running_preset not in adaptivemanager.names():
-                result = ipc.get_client().adaptive_stop()
-                if result.get("ok"):
-                    cfg.set_config("Adaptive", "enabled", "0")
-                    cfg.save()
+                ipc.get_client().adaptive_stop()
                 self.app.notify(f"Preset '{sel}' deleted — Adaptive Mode stopped.", title="Deleted")
             else:
                 self.app.notify(f"Preset '{sel}' deleted.", title="Deleted")
@@ -285,7 +281,7 @@ class AdaptiveTab(VerticalScroll):
             if self._running:
                 result = client.adaptive_stop()
                 if result.get("ok"):
-                    self._persist_run("", enabled=False)
+                    self._persist_run("")
                     self.app.notify("Adaptive Mode stopped.", title="Adaptive Mode")
                 else:
                     self.app.notify(result.get("error", "Failed to stop Adaptive Mode."),
@@ -305,13 +301,11 @@ class AdaptiveTab(VerticalScroll):
                 if name:
                     adaptivemanager.save(name, preset)
                     self._refresh_presets(name)
-                self._persist_run(target, enabled=True)
+                self._persist_run(target)
                 result = client.adaptive_start(target, asdict(preset))
                 if result.get("ok"):
                     self.app.notify(f"Adaptive Mode started — {target}.", title="Adaptive Mode")
                 else:
-                    cfg.set_config("Adaptive", "enabled", "0")
-                    cfg.save()
                     self.app.notify(result.get("error", "Failed to start Adaptive Mode."),
                                     title="Adaptive Mode", severity="error")
             self._refresh_status()

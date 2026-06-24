@@ -1,11 +1,24 @@
 from __future__ import annotations
 
+import os
 import threading
 from dataclasses import fields as dataclass_fields
 
 from Assets.core import config as cfg
 from Assets.daemon.loops import _STOP_LOOP_TIMEOUT_S
 from Assets.daemon.util import log
+
+ADAPTIVE_SESSION_FILE = "/run/uxtu4linux_adaptive"
+
+
+def _mark_adaptive_session(active: bool) -> None:
+    try:
+        if active:
+            open(ADAPTIVE_SESSION_FILE, "w").close()
+        else:
+            os.remove(ADAPTIVE_SESSION_FILE)
+    except OSError:
+        pass
 
 
 class AdaptiveMixin:
@@ -127,12 +140,14 @@ class AdaptiveMixin:
         self._adaptive_thread = threading.Thread(
             target=self._adaptive_body, args=(interval,), daemon=True, name="uxtu-adaptive")
         self._adaptive_thread.start()
+        _mark_adaptive_session(True)
         return {"ok": True, "caps": sorted(caps)}
 
     def _cmd_adaptive_stop(self, _msg):
         self._stop_adaptive()
         with self._lock:
             self._adaptive_running = False
+        _mark_adaptive_session(False)
         log.info("Adaptive turned off.")
         try:
             revert = self._cmd_apply_saved({})

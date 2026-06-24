@@ -130,5 +130,5 @@ REQUIRED: dict[str, list[str]] = {
     "Settings": ["time", "reapply", "applyonstart", "autostartadaptive", "softwareupdate", "debug", "defaulttab"],
     "Info": ["cpu", "signature", "architecture", "family", "type", "variant", "maxclock"],
     "Automations": ["onac", "onbattery", "onresume"],
-    "Adaptive": ["enabled", "preset", "interval"],
+    "Adaptive": ["preset", "interval"],
 }
