@@ -7,7 +7,7 @@ from textual import work
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import Button, Input, Label, RichLog, Static
+from textual.widgets import Button, Input, Label, Markdown, RichLog, Static
 
 from Assets.core import config as cfg
 
@@ -278,7 +278,7 @@ class UpdaterModal(ModalScreen):
             yield Static(f"Current version: v{cfg.LOCAL_VERSION}")
             yield Static("Checking for updates…", id="upd_status")
             with VerticalScroll(id="upd_changelog_scroll"):
-                yield Static("", id="upd_changelog")
+                yield Markdown("", id="upd_changelog")
             with Horizontal(id="upd_buttons"):
                 yield Button("Update now", id="upd_do", variant="success", disabled=True)
                 yield Button("Switch to beta", id="upd_beta", variant="warning")
@@ -304,7 +304,7 @@ class UpdaterModal(ModalScreen):
         up_to_date = _ver_tuple(cfg.LOCAL_VERSION) >= _ver_tuple(latest)
         self.query_one("#upd_status", Static).update(
             "You are on the latest version." if up_to_date else f"Update available: {latest}")
-        self.query_one("#upd_changelog", Static).update(changelog)
+        self.query_one("#upd_changelog", Markdown).update(changelog)
         btn = self.query_one("#upd_do", Button)
         btn.label = "Reinstall" if up_to_date else "Update now"
         btn.disabled = False
