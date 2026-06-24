@@ -19,6 +19,7 @@ UXTU4Linux is a power management tool for **AMD Ryzen APUs and desktop CPUs** on
 - Live Home dashboard with real-time CPU temperature, power, clock and usage graphs
 - Automations: switch presets automatically on AC/battery changes and re-apply on resume from sleep, suspend or hibernation
 - Auto-reapply on a timer, so competing power management tools can't silently undo your settings
+- Per-command SMU feedback: the Status tab shows exactly which commands your CPU accepted and which it rejected, instead of failing silently
 - Built-in updater that keeps your config and custom presets across updates
 
 ---
@@ -67,13 +68,14 @@ The first run walks you through setting up the daemon and detecting your hardwar
 ## Preview
 
 <p align="left">
-  <img src="/Img/menu.png"/>
-  <img src="/Img/power.png"/>
-  <img src="/Img/power_status.png"/>
+  <img src="/Img/home.png"/>
+  <img src="/Img/premade.png"/>
   <img src="/Img/custom.png"/>
-  <img src="/Img/automations.png"/>
+  <img src="/Img/adaptive.png"/>
+  <img src="/Img/auto.png"/>
+  <img src="/Img/info.png"/>
+  <img src="/Img/status.png"/>
   <img src="/Img/settings.png"/>
-  <img src="/Img/hardware.png"/>
 </p>
 
 ---

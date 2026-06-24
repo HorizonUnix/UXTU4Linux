@@ -1,13 +1,13 @@
 ## [1.0.0]
 
-UXTU4Linux reaches 1.0.0. The headline addition is Adaptive Mode: instead of holding one fixed preset, the app now tunes your CPU live from temperature and load. The Home tab gained live graphs, Automations were rebuilt to be simpler, and the whole codebase was reorganized underneath.
+After two years of development, UXTU4Linux finally reaches 1.0.0 with all the core features in place. The headline addition is Adaptive Mode: instead of holding one fixed preset, the app now tunes your CPU live from temperature and load. The Home tab gained live graphs, Automations were rebuilt to be simpler, and the whole codebase was reorganized underneath.
 
-> **Updating from v0.9.x?** v1.0.0 adds one new dependency (`textual-plotext`, used for the Home graphs). Re-run the installer above to pick it up while keeping your settings and custom presets.
+> **Updating from v0.9.x and v0.8.x?** v1.0.0 adds one new dependency (`textual-plotext`, used for the Home graphs). Re-run the installer above to pick it up while keeping your settings and custom presets.
 
 Prefer not to reinstall? Add it to the existing environment by hand, then restart the daemon:
 
 ```bash
-/opt/uxtu4linux/venv/bin/pip install textual-plotext
+/opt/uxtu4linux/venv/bin/pip install textual textual-plotext
 sudo systemctl restart uxtu4linux.service
 ```
 
@@ -20,7 +20,7 @@ sudo systemctl restart uxtu4linux.service
 - **Real-time graphs.** The Home tab now plots CPU temperature, power, clock and usage as they happen, alongside the quick links to every other tab.
 
 ### Automations
-- **Remove Override switch.** Automations are active whenever you set a Battery Charge or Battery Discharge preset. Leave a slot empty to keep whatever is already applied for that power state.
+- **Override switch removed.** Automations are active whenever you set a Battery Charge or Battery Discharge preset. Leave a slot empty to keep whatever is already applied for that power state.
 - **Apply any time.** Applying a preset by hand is no longer blocked while automations are set; the automation simply re-applies the right preset on the next AC/battery change.
 
 ### Settings
@@ -28,6 +28,9 @@ sudo systemctl restart uxtu4linux.service
 
 ### Under the hood
 - A large reorganization of the daemon and the interface into smaller, focused modules, plus dead-code cleanup, for a cleaner and more maintainable foundation.
+
+### Note
+- With official UXTU support for Linux on the way, this release marks the completion of the project: from now on there will only be bug fixes and improvements. If you want to add new features and have some development experience, take a look at https://github.com/HorizonUnix/UXTU4Linux/wiki/Developer-Documentation to learn more about UXTU4Linux and become a contributor!
 
 **Full changelog:** https://github.com/HorizonUnix/UXTU4Linux/compare/0.9.1...1.0.0
 
