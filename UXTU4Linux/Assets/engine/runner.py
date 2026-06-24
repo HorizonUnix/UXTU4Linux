@@ -647,17 +647,21 @@ def apply_args(args_str: str, family: str) -> tuple[str, bool]:
         smu_val = _skin_scale(name, raw)
         smu_val = max(0, min(0xFFFFFFFF, smu_val))
 
+        results = []
         for is_mp1, op in matches:
             if is_mp1:
                 status = smu.send_mp1(family, op, smu_val)
             else:
                 status = smu.send_rsmu(family, op, smu_val)
             mb = "MP1" if is_mp1 else "RSMU"
+            results.append((mb, op, status))
+
+        applied = any(status == smu.SMU_OK for _, _, status in results)
+        if not applied:
+            any_rejected = True
+        for mb, op, status in results:
             status_str = smu.status_name(status)
-            if status != smu.SMU_OK:
-                any_rejected = True
-                lines.append(f"{name} [{mb} 0x{op:02X}] = {smu_val} -> {status_str} [!]")
-            else:
-                lines.append(f"{name} [{mb} 0x{op:02X}] = {smu_val} -> {status_str}")
+            flag = " [!]" if status != smu.SMU_OK and not applied else ""
+            lines.append(f"{name} [{mb} 0x{op:02X}] = {smu_val} -> {status_str}{flag}")
 
     return "\n".join(lines) if lines else "(no matching commands for this family)", any_rejected
