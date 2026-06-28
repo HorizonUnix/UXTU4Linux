@@ -32,14 +32,22 @@ _SMU_INSTALL_GUIDE = f"Install guide: {cfg.RYZEN_SMU_WIKI_URL}"
 def check_ryzen_smu() -> str | None:
     from Assets.amd import smu
 
-    if smu.is_available():
-        if not smu.version_ok():
-            ver = smu.get_version()
-            req = smu.version_str(smu.MIN_VERSION)
-            return (
-                f"ryzen_smu version {ver} is too old (minimum required: {req}).\n\n"
-                f"{_SMU_INSTALL_GUIDE}"
-            )
+    if smu.is_available() and smu.version_ok():
+        return None
+
+    sb = secure_boot_enabled()
+
+    if smu.is_available() and not smu.version_ok():
+        ver = smu.get_version()
+        req = smu.version_str(smu.MIN_VERSION)
+        if not sb and smu.init_pci_backend():
+            return None
+        return (
+            f"ryzen_smu version {ver} is too old (minimum required: {req}).\n\n"
+            f"{_SMU_INSTALL_GUIDE}"
+        )
+
+    if not sb and smu.init_pci_backend():
         return None
 
     try:
@@ -56,7 +64,7 @@ def check_ryzen_smu() -> str | None:
     if not installed:
         return f"ryzen_smu kernel module is not installed.\n\n{_SMU_INSTALL_GUIDE}"
 
-    if not signed and secure_boot_enabled():
+    if not signed and sb:
         return (
             "ryzen_smu is installed but not signed for Secure Boot.\n\n"
             f"{_SMU_INSTALL_GUIDE}"
