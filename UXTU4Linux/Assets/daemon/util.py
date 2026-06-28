@@ -132,6 +132,8 @@ _smu_state = {"warned": False}
 
 def _smu_blocked() -> str | None:
     from Assets.amd import smu
+    if smu.active_backend() == "pci":
+        return None
     if not smu.is_available():
         return "ryzen_smu is not available"
     if not smu.version_ok():
