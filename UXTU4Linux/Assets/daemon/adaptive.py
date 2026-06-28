@@ -46,7 +46,7 @@ class AdaptiveMixin:
             state, temp, load, preset.power, 8, preset.max_temp, is_apu)
         if cmd:
             parts.append(cmd)
-        if preset.enable_co and not self._autooc_running:
+        if preset.enable_co:
             cmd = adaptive.curve_optimiser(state, load, preset.co_max)
             if cmd:
                 parts.append(cmd)

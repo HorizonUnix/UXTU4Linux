@@ -23,10 +23,9 @@ from Assets.daemon.util import (
 from Assets.daemon.commands import CommandsMixin
 from Assets.daemon.loops import LoopsMixin
 from Assets.daemon.adaptive import AdaptiveMixin
-from Assets.daemon.autooc import AutoOCMixin, _Controller
 
 
-class PowerDaemon(CommandsMixin, LoopsMixin, AdaptiveMixin, AutoOCMixin):
+class PowerDaemon(CommandsMixin, LoopsMixin, AdaptiveMixin):
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._loop_thread: threading.Thread | None = None
@@ -54,16 +53,6 @@ class PowerDaemon(CommandsMixin, LoopsMixin, AdaptiveMixin, AutoOCMixin):
         self._adaptive_sample = None
         self._adaptive_applied = ""
 
-        self._autooc_mce_thread: threading.Thread | None = None
-        self._autooc_step_thread: threading.Thread | None = None
-        self._stop_autooc_evt = threading.Event()
-        self._stop_autooc_step_evt = threading.Event()
-        self._autooc_running = False
-        self._autooc_mce_count: int = 0
-        self._autooc_last_mce: str | None = None
-        self._cpu_controller = _Controller()
-        self._igpu_controller = _Controller()
-
         self._dispatch = {
             "ping": self._cmd_ping,
             "apply": self._cmd_apply,
@@ -78,10 +67,6 @@ class PowerDaemon(CommandsMixin, LoopsMixin, AdaptiveMixin, AutoOCMixin):
             "adaptive_start": self._cmd_adaptive_start,
             "adaptive_stop": self._cmd_adaptive_stop,
             "adaptive_status": self._cmd_adaptive_status,
-            "autooc_start": self._cmd_autooc_start,
-            "autooc_stop": self._cmd_autooc_stop,
-            "autooc_status": self._cmd_autooc_status,
-            "autooc_reset": self._cmd_autooc_reset,
         }
 
     def run(self, on_ready=None) -> None:
@@ -108,7 +93,6 @@ class PowerDaemon(CommandsMixin, LoopsMixin, AdaptiveMixin, AutoOCMixin):
         log.info("IPC socket ready: %s", cfg.ZMQ_SOCKET_ADDR)
 
         self._start_suspend_monitor()
-        self.start_autooc_monitor()
 
         def _sig_handler(*_):
             log.info("Signal received — shutting down.")
@@ -217,26 +201,37 @@ def main() -> None:
     arch = cfg.get("Info", "Architecture")
     log.info("CPU: %s, Family: %s, Arch: %s", cpu, fam, arch)
 
-    if not smu.is_available():
-        from Assets.core.hardware import ryzen_smu_installed, ryzen_smu_signed
-        installed = ryzen_smu_installed()
-        sb = secure_boot_enabled()
-        if not installed:
-            log.error("ryzen_smu not installed.\nInstall guide: %s", cfg.RYZEN_SMU_WIKI_URL)
-        elif sb and not ryzen_smu_signed():
-            log.error("ryzen_smu installed but not signed for Secure Boot.\nInstall guide: %s", cfg.RYZEN_SMU_WIKI_URL)
-        else:
-            log.error("ryzen_smu installed but not loaded.\nInstall guide: %s", cfg.RYZEN_SMU_WIKI_URL)
-        log.warning("Running without SMU access — presets will not be applied until ryzen_smu is working.")
-    elif not smu.version_ok():
+    sb = secure_boot_enabled()
+    kmod_ok = smu.is_available() and smu.version_ok()
+
+    if kmod_ok:
+        log.info("ryzen_smu driver ready (version %s).", smu.get_version())
+    elif smu.is_available() and not smu.version_ok():
         log.error(
             "ryzen_smu version %s is too old (minimum: %s).\nInstall guide: %s",
             smu.get_version(), smu.version_str(smu.MIN_VERSION), cfg.RYZEN_SMU_WIKI_URL,
         )
-        log.warning("Running without SMU access — presets will not be applied until ryzen_smu is updated.")
+        if not sb and smu.init_pci_backend():
+            log.info("PCI backend active — sending commands directly via PCI config space.")
+        else:
+            log.warning("Running without SMU access — presets will not be applied.")
     else:
-        log.info("ryzen_smu driver ready (version %s).", smu.get_version())
-        log.debug("SMN interface available: %s", smu.has_smn())
+        if sb:
+            from Assets.core.hardware import ryzen_smu_installed, ryzen_smu_signed
+            installed = ryzen_smu_installed()
+            if not installed:
+                log.error("ryzen_smu not installed. Required when Secure Boot is enabled.\nInstall guide: %s", cfg.RYZEN_SMU_WIKI_URL)
+            elif not ryzen_smu_signed():
+                log.error("ryzen_smu not signed for Secure Boot.\nInstall guide: %s", cfg.RYZEN_SMU_WIKI_URL)
+            else:
+                log.error("ryzen_smu installed but not loaded.\nInstall guide: %s", cfg.RYZEN_SMU_WIKI_URL)
+            log.warning("Running without SMU access — presets will not be applied.")
+        else:
+            log.info("ryzen_smu not loaded — trying PCI direct access backend.")
+            if smu.init_pci_backend():
+                log.info("PCI backend active — sending commands directly via PCI config space.")
+            else:
+                log.warning("PCI backend unavailable. Running without SMU access — presets will not be applied.")
 
     daemon = PowerDaemon()
 

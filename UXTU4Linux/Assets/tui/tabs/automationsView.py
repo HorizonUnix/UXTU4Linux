@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from textual import work
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical, VerticalScroll
-from textual.widgets import Button, Select, Static
+from textual.containers import Vertical, VerticalScroll
+from textual.widgets import Select, Static
 
 from Assets.tuning import automations as au
 
@@ -41,96 +41,6 @@ class AutomationsTab(VerticalScroll):
                     yield Static(desc, classes="field_hint")
                     yield Select(list(options), value=cur if cur in valid else "",
                                  allow_blank=False, id=f"slot-{slot_id}")
-        with Vertical(classes="settings_card"):
-            yield Static("AutoOC — Auto Curve Optimiser", classes="card_title")
-            yield Static(
-                "Proactively steps the Curve Optimiser toward the maximum safe undervolt. "
-                "Works with all preset types. Backs off automatically if a Machine Check "
-                "Exception (MCE) is detected in the kernel log.",
-                classes="field_hint",
-            )
-            yield Static("", id="autooc_status", classes="field_hint")
-            yield Static("", id="autooc_offsets", classes="field_hint")
-            with Horizontal(classes="row daemon_buttons"):
-                yield Button("Start", id="autooc_toggle", variant="success")
-                yield Button("Reset", id="autooc_reset")
-
-    def on_mount(self) -> None:
-        self._refresh_autooc()
-        self.set_interval(2.0, self._refresh_autooc)
-
-    def _refresh_autooc(self) -> None:
-        self._fetch_autooc_status()
-
-    @work(thread=True, exclusive=True, group="autooc_poll")
-    def _fetch_autooc_status(self) -> None:
-        from Assets.core.ipc import get_client
-        st = get_client().autooc_status()
-        self.app.call_from_thread(self._render_autooc, st)
-
-    def _render_autooc(self, st: dict) -> None:
-        from textual.css.query import NoMatches
-        try:
-            status_w = self.query_one("#autooc_status", Static)
-            offsets_w = self.query_one("#autooc_offsets", Static)
-            btn = self.query_one("#autooc_toggle", Button)
-        except NoMatches:
-            return
-        running = st.get("running", False)
-        mce_count = st.get("mce_count", 0)
-        last_mce = st.get("last_mce")
-        cpu_offset = st.get("cpu_offset", 0)
-        igpu_offset = st.get("igpu_offset", 0)
-        if running:
-            count_str = f"{mce_count} MCE{'s' if mce_count != 1 else ''}"
-            status = f"[green]Running[/] · {count_str}"
-            if last_mce:
-                status += f" · last: {last_mce}"
-            btn.label = "Stop"
-            btn.variant = "error"
-        else:
-            status = "[dim]Stopped[/]"
-            btn.label = "Start"
-            btn.variant = "success"
-        status_w.update(status)
-        if running:
-            offsets_w.update(
-                f"CPU CO: [b]{cpu_offset}[/] steps · iGPU CO: [b]{igpu_offset}[/] steps"
-                f" (max {30})")
-        else:
-            offsets_w.update("")
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        bid = event.button.id or ""
-        if bid == "autooc_toggle":
-            self._autooc_toggle()
-        elif bid == "autooc_reset":
-            self._autooc_reset_ceiling()
-
-    @work(thread=True, exclusive=True, group="autooc_cmd")
-    def _autooc_toggle(self) -> None:
-        from Assets.core.ipc import get_client
-        client = get_client()
-        if client.autooc_status().get("running"):
-            client.autooc_stop()
-            self.app.call_from_thread(
-                self.app.notify, "AutoOC stopped.", title="AutoOC")
-        else:
-            client.autooc_start()
-            self.app.call_from_thread(
-                self.app.notify, "AutoOC started — stepping CO toward max safe undervolt.", title="AutoOC")
-        self.app.call_from_thread(self._render_autooc, client.autooc_status())
-
-    @work(thread=True, exclusive=True, group="autooc_cmd")
-    def _autooc_reset_ceiling(self) -> None:
-        from Assets.core.ipc import get_client
-        client = get_client()
-        client.autooc_reset()
-        self.app.call_from_thread(
-            self.app.notify,
-            "AutoOC reset — CO offsets cleared, controllers restarted from 0.",
-            title="AutoOC")
-        self.app.call_from_thread(self._render_autooc, client.autooc_status())
 
     def on_select_changed(self, event: Select.Changed) -> None:
         sid = event.control.id or ""
