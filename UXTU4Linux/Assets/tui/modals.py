@@ -273,7 +273,7 @@ class UpdaterModal(ModalScreen):
     BINDINGS = [("escape", "close", "Close")]
 
     def compose(self) -> ComposeResult:
-        with Vertical(id="dialog"):
+        with Vertical(id="updater_dialog"):
             yield Label("Software Update", classes="dialog_title")
             yield Static(f"Current version: v{cfg.LOCAL_VERSION}")
             yield Static("Checking for updates…", id="upd_status")
@@ -281,7 +281,7 @@ class UpdaterModal(ModalScreen):
                 yield Markdown("", id="upd_changelog")
             with Horizontal(id="upd_buttons"):
                 yield Button("Update now", id="upd_do", variant="success", disabled=True)
-                yield Button("Switch to beta", id="upd_beta", variant="warning")
+                yield Button("Install Beta", id="upd_beta", variant="warning")
                 yield Button("Close", id="upd_close", variant="primary")
 
     def on_mount(self) -> None:
@@ -310,7 +310,6 @@ class UpdaterModal(ModalScreen):
         btn.disabled = False
         beta_btn = self.query_one("#upd_beta", Button)
         if not beta_ok:
-            beta_btn.label = "Beta unavailable"
             beta_btn.disabled = True
 
     def on_button_pressed(self, event: Button.Pressed) -> None:

@@ -2,6 +2,11 @@ Screen {
     layout: vertical;
 }
 
+Button {
+    padding: 0 2;
+    content-align: center middle;
+}
+
 Button:focus {
     text-style: bold;
 }
@@ -191,17 +196,6 @@ StatusTab {
     border: round $panel-lighten-1;
 }
 
-#status_adaptive_card {
-    height: auto;
-    padding: 1 2;
-    margin: 1 1 0 1;
-    border: round $panel-lighten-1;
-}
-
-#status_adaptive {
-    height: auto;
-}
-
 #status_smu_card {
     height: auto;
     margin: 1 1 1 1;
@@ -309,7 +303,7 @@ ConfirmModal, DaemonLogModal, HardwareInfoModal, FatalErrorModal, StalePathModal
 }
 
 #hw_dialog {
-    width: 70;
+    width: 80;
     max-width: 90%;
     height: auto;
     padding: 1 2;
@@ -419,7 +413,16 @@ AboutModal, UpdaterModal, UpdateProgressModal, SudoModal {
 }
 
 #about_dialog {
-    width: 60;
+    width: 80;
+    max-width: 90%;
+    height: auto;
+    padding: 1 2;
+    border: round $accent;
+    background: $surface;
+}
+
+#updater_dialog {
+    width: 80;
     max-width: 90%;
     height: auto;
     padding: 1 2;
@@ -497,14 +500,12 @@ AboutModal, UpdaterModal, UpdateProgressModal, SudoModal {
 
 #upd_buttons {
     height: auto;
-    align-horizontal: center;
 }
 
 #upd_buttons Button {
-    width: auto;
+    width: 1fr;
     min-width: 0;
     margin: 0 1;
-    padding: 0 2;
 }
 
 #upd_changelog_scroll {

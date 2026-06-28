@@ -32,6 +32,18 @@ class AdaptiveTab(VerticalScroll):
         "nv_mem_offset": "Controls the clock offset for your NVIDIA GPU's VRAM clock",
     }
 
+    _RANGES = {
+        "max_temp":      (50, 105),
+        "power":         (5, 300),
+        "co_max":        (0, 30),
+        "igpu_min":      (200, 2000),
+        "igpu_max":      (200, 2000),
+        "min_cpu_clk":   (400, 4000),
+        "nv_max_clk":    (100, 4000),
+        "nv_core_offset": (-1000, 1000),
+        "nv_mem_offset":  (-1000, 1000),
+    }
+
     _CORE_KEYS = ("max_temp", "power", "co_max", "igpu_min", "igpu_max", "min_cpu_clk")
     _NV_KEYS = ("nv_max_clk", "nv_core_offset", "nv_mem_offset")
 
@@ -43,7 +55,12 @@ class AdaptiveTab(VerticalScroll):
     def _num_field(self, key: str) -> Vertical:
         _, label, unit, default = next(f for f in self._FIELDS if f[0] == key)
         head = Static(label, classes="field_name", markup=False)
-        desc = Static(self._HINTS[key], classes="field_hint", markup=False)
+        hint = self._HINTS[key]
+        rng = self._RANGES.get(key)
+        if rng:
+            rng_str = f"Range: {rng[0]} to {rng[1]} {unit}".rstrip()
+            hint = f"{hint}\n{rng_str}"
+        desc = Static(hint, classes="field_hint", markup=False)
         box = Input(str(default), type="integer", restrict=r"-?\d*",
                     id=f"adaptive_f_{key}", classes="card_value")
         row = Horizontal(box, Static(unit, classes="unit"), classes="card_controls")
@@ -86,7 +103,7 @@ class AdaptiveTab(VerticalScroll):
             with Horizontal(classes="topbar_row"):
                 yield Select([(n, n) for n in names], prompt="Saved Presets",
                              id="adaptive_select", allow_blank=True)
-                yield Input(placeholder="New preset name", id="adaptive_name")
+                yield Input(placeholder="Preset name", id="adaptive_name")
             with Horizontal(classes="topbar_row"):
                 yield Button("Save", id="adaptive_save", variant="primary")
                 yield Button("Duplicate", id="adaptive_duplicate")

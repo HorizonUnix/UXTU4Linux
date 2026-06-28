@@ -23,9 +23,10 @@ from Assets.daemon.util import (
 from Assets.daemon.commands import CommandsMixin
 from Assets.daemon.loops import LoopsMixin
 from Assets.daemon.adaptive import AdaptiveMixin
+from Assets.daemon.autooc import AutoOCMixin, _Controller
 
 
-class PowerDaemon(CommandsMixin, LoopsMixin, AdaptiveMixin):
+class PowerDaemon(CommandsMixin, LoopsMixin, AdaptiveMixin, AutoOCMixin):
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._loop_thread: threading.Thread | None = None
@@ -53,6 +54,16 @@ class PowerDaemon(CommandsMixin, LoopsMixin, AdaptiveMixin):
         self._adaptive_sample = None
         self._adaptive_applied = ""
 
+        self._autooc_mce_thread: threading.Thread | None = None
+        self._autooc_step_thread: threading.Thread | None = None
+        self._stop_autooc_evt = threading.Event()
+        self._stop_autooc_step_evt = threading.Event()
+        self._autooc_running = False
+        self._autooc_mce_count: int = 0
+        self._autooc_last_mce: str | None = None
+        self._cpu_controller = _Controller()
+        self._igpu_controller = _Controller()
+
         self._dispatch = {
             "ping": self._cmd_ping,
             "apply": self._cmd_apply,
@@ -67,6 +78,10 @@ class PowerDaemon(CommandsMixin, LoopsMixin, AdaptiveMixin):
             "adaptive_start": self._cmd_adaptive_start,
             "adaptive_stop": self._cmd_adaptive_stop,
             "adaptive_status": self._cmd_adaptive_status,
+            "autooc_start": self._cmd_autooc_start,
+            "autooc_stop": self._cmd_autooc_stop,
+            "autooc_status": self._cmd_autooc_status,
+            "autooc_reset": self._cmd_autooc_reset,
         }
 
     def run(self, on_ready=None) -> None:
@@ -93,6 +108,7 @@ class PowerDaemon(CommandsMixin, LoopsMixin, AdaptiveMixin):
         log.info("IPC socket ready: %s", cfg.ZMQ_SOCKET_ADDR)
 
         self._start_suspend_monitor()
+        self.start_autooc_monitor()
 
         def _sig_handler(*_):
             log.info("Signal received — shutting down.")

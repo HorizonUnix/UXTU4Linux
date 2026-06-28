@@ -2,6 +2,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import urllib.request
 import zipfile
 
@@ -109,6 +110,20 @@ def perform_update(url: str = _STABLE_URL, status=None) -> dict:
             shutil.move(config_bak, os.path.join(new_assets, "config.ini"))
         if os.path.exists(presets_bak):
             shutil.move(presets_bak, os.path.join(new_assets, "custom.json"))
+
+        reqs = os.path.join(src_dir, "requirements.txt")
+        if os.path.exists(reqs):
+            notify("Updating dependencies…")
+            if os.path.exists(cfg.VENV_PYTHON):
+                pip_python = cfg.VENV_PYTHON
+                pip_extra = []
+            else:
+                pip_python = sys.executable
+                pip_extra = ["--user"]
+            subprocess.run(
+                [pip_python, "-m", "pip", "install", "--quiet", "--no-cache-dir", *pip_extra, "-r", reqs],
+                check=True,
+            )
 
         if os.path.exists(zip_path):
             os.remove(zip_path)

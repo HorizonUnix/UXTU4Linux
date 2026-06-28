@@ -42,14 +42,21 @@ def check_ryzen_smu() -> str | None:
             )
         return None
 
-    installed = ryzen_smu_installed()
-    signed = ryzen_smu_signed()
-    sb = secure_boot_enabled()
+    try:
+        result = subprocess.run(
+            ["modinfo", "ryzen_smu"],
+            capture_output=True, text=True, timeout=5,
+        )
+        installed = result.returncode == 0
+        signed = installed and ("sig_id:" in result.stdout or "signer:" in result.stdout)
+    except Exception:
+        installed = False
+        signed = False
 
     if not installed:
         return f"ryzen_smu kernel module is not installed.\n\n{_SMU_INSTALL_GUIDE}"
 
-    if sb and not signed:
+    if not signed and secure_boot_enabled():
         return (
             "ryzen_smu is installed but not signed for Secure Boot.\n\n"
             f"{_SMU_INSTALL_GUIDE}"

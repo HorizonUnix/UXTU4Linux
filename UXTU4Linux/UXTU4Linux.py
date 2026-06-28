@@ -7,10 +7,8 @@ if _ROOT not in sys.path:
 
 import fcntl as _fcntl
 from Assets.core import config as cfg
-from Assets.core.hardware import check_binaries, check_ryzen_smu, ensure_max_clock
-from Assets.tuning.power import get_presets
+from Assets.core.hardware import check_binaries
 from Assets.flows.setup import check_integrity, init_config, needs_setup, ensure_custom_presets_file
-from Assets.daemon.service import service_path_stale
 
 
 cfg.load()
@@ -35,13 +33,6 @@ def _acquire_single_instance() -> bool:
         return False
 
 
-def _apply_if_idle() -> None:
-    from Assets.core.ipc import get_client
-    client = get_client()
-    if not client.status().get("mode"):
-        client.apply_saved()
-
-
 def main() -> None:
     if not _acquire_single_instance():
         from Assets.tui.app import run as run_textual
@@ -58,24 +49,8 @@ def main() -> None:
         check_integrity()
     cfg.load()
 
-    if not first_run:
-        ensure_max_clock()
-
-    if not dep_error and cfg.get("Info", "Type") == "Intel":
-        dep_error = "Intel CPUs are not supported.\n\nUXTU4Linux only supports AMD Ryzen APUs and desktop CPUs."
-    if not dep_error:
-        dep_error = check_ryzen_smu()
-
-    path_stale = service_path_stale()
-
-    try:
-        get_presets()
-    except Exception:
-        pass
-    _apply_if_idle()
-
     from Assets.tui.app import run as run_textual
-    result = run_textual(first_run=first_run, dep_error=dep_error, path_stale=path_stale)
+    result = run_textual(first_run=first_run, dep_error=dep_error)
     if result in ("setup-done", "relaunch"):
         os.execv(sys.executable, [sys.executable, *sys.argv])
     elif result == "reset":

@@ -45,7 +45,7 @@ class CustomEditor(VerticalScroll):
             with Horizontal(classes="topbar_row"):
                 yield Select([(n, n) for n in names], prompt="Saved Presets",
                              id="preset_select", allow_blank=True, **sel_kwargs)
-                yield Input(value=self.preset_name, placeholder="New preset name", id="new_name")
+                yield Input(value=self.preset_name, placeholder="Preset name", id="new_name")
             with Horizontal(classes="topbar_row"):
                 yield Button("Save", id="ed_save", variant="primary")
                 yield Button("Duplicate", id="ed_duplicate")
@@ -59,7 +59,12 @@ class CustomEditor(VerticalScroll):
     def _field_row(self, fi: int) -> Vertical:
         f = self.fields[fi]
         head = Static(f["label"], classes="field_name", markup=False)
-        desc = Static(f.get("hint", ""), classes="field_hint", markup=False)
+        hint = f.get("hint", "")
+        if "choices" not in f and "min" in f and "max" in f:
+            unit = f.get("unit", "")
+            rng = f"Range: {f['min']} to {f['max']} {unit}".rstrip()
+            hint = f"{hint}\n{rng}" if hint else rng
+        desc = Static(hint, classes="field_hint", markup=False)
         toggle = Switch(value=f["enabled"], id=f"fcb-{fi}")
         if "choices" in f:
             control = Select([(c, i) for i, c in enumerate(f["choices"])],

@@ -22,8 +22,12 @@ class HomeTab(VerticalScroll):
         ("cpu_temp", "CPU Temperature", "°C", (-10, 110)),
         ("cpu_power", "CPU Power", "W", None),
         ("cpu_clk", "CPU Clock", "MHz", None),
-        ("cpu_load", "CPU Usage", "%", (-10, 100)),
+        ("cpu_load", "CPU Usage", "%", (0, 100)),
+        ("igpu_clk", "iGPU Clock", "MHz", None),
+        ("igpu_load", "iGPU Usage", "%", (0, 100)),
     )
+
+    _IGPU_KEYS = {"igpu_clk", "igpu_load"}
 
     _WINDOW = 30
 
@@ -35,7 +39,14 @@ class HomeTab(VerticalScroll):
         max_clock = cfg.get("Info", "MaxClock", "")
         if max_clock.isdigit() and int(max_clock) > 0:
             self._ranges["cpu_clk"] = (0, int(max_clock))
-        active = [g for g in self._GRAPHS if g[0] in self._caps]
+        igpu_max = sensors.igpu_max_clock()
+        if igpu_max and igpu_max > 0:
+            self._ranges["igpu_clk"] = (0, int(igpu_max))
+        is_apu = cfg.get("Info", "Type") == "Amd_Apu"
+        active = [
+            g for g in self._GRAPHS
+            if g[0] in self._caps and (g[0] not in self._IGPU_KEYS or is_apu)
+        ]
         if active:
             with Grid(classes="graph_grid"):
                 for key, title, _unit, _rng in active:
@@ -68,9 +79,16 @@ class HomeTab(VerticalScroll):
             series = self._series[key]
             series.append(float(value))
             del series[:-self._WINDOW]
+            if unit == "%":
+                lo = rng[0] if rng is not None else 0
+                hi = rng[1] if rng is not None else 100
+                floor = lo + (hi - lo) * 0.1
+                plot_data = [max(v, floor) for v in series]
+            else:
+                plot_data = series
             plot = self.query_one(f"#graph_{key}", PlotextPlot)
             plot.plt.clear_data()
-            plot.plt.plot(series, marker="braille", color="cyan")
+            plot.plt.plot(plot_data, marker="braille", color="cyan")
             plot.plt.frame(False)
             plot.plt.xticks([])
             plot.plt.yticks([])

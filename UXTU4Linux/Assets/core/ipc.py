@@ -117,6 +117,25 @@ class DaemonClient:
             "caps": [],
         }
 
+    def autooc_start(self) -> dict:
+        return self._send({"cmd": "autooc_start"}) or {"ok": False}
+
+    def autooc_stop(self) -> dict:
+        return self._send({"cmd": "autooc_stop"}) or {"ok": False}
+
+    def autooc_status(self) -> dict:
+        return self._send({"cmd": "autooc_status"}) or {
+            "ok": False,
+            "running": False,
+            "mce_count": 0,
+            "last_mce": None,
+            "cpu_offset": 0,
+            "igpu_offset": 0,
+        }
+
+    def autooc_reset(self) -> dict:
+        return self._send({"cmd": "autooc_reset"}) or {"ok": False}
+
 
 _client: DaemonClient | None = None
 _client_lock = threading.Lock()

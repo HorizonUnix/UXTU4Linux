@@ -56,13 +56,15 @@ class PowerTab(VerticalScroll):
             self.query_one(f"#pbtn-{name}", Button).set_class(name == active, "active")
 
     def _clear_detail(self) -> None:
-        self.query_one("#preset_detail", Static).update("")
+        self.query_one("#preset_detail", Static).display = False
         self.query_one("#preset_command", Static).update("")
         self.query_one("#preset_command_card").display = False
 
     def _show_detail(self, name: str) -> None:
         desc = _PRESET_HINTS.get(name, "")
-        self.query_one("#preset_detail", Static).update(f"[b]{name} Preset[/]\n\n{desc}")
+        detail = self.query_one("#preset_detail", Static)
+        detail.update(f"[b]{name} Preset[/]\n\n{desc}")
+        detail.display = True
         self.query_one("#preset_command", Static).update(self._presets.get(name, ""))
         self.query_one("#preset_command_card").display = True
 

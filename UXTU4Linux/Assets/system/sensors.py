@@ -166,6 +166,19 @@ def _igpu_clk():
     return _current_clk(os.path.join(card, "pp_dpm_sclk"))
 
 
+def igpu_max_clock():
+    key = ("igpu_max_clk",)
+    if key not in _cache:
+        card = _find_amdgpu_card()
+        if card is None:
+            _cache[key] = None
+        else:
+            text = _read_text(os.path.join(card, "pp_dpm_sclk")) or ""
+            values = [float(m) for m in re.findall(r"(\d+)\s*MHz", text, re.IGNORECASE)]
+            _cache[key] = max(values) if values else None
+    return _cache[key]
+
+
 def _mem_clk():
     card = _find_amdgpu_card()
     if card is None:
@@ -226,4 +239,6 @@ def capabilities():
         caps.add("cpu_load")
     if snapshot.igpu_load is not None:
         caps.add("igpu_load")
+    if snapshot.igpu_clk is not None:
+        caps.add("igpu_clk")
     return caps

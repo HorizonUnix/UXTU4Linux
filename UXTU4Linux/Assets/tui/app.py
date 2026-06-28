@@ -26,12 +26,10 @@ class U4LApp(App):
     CSS_PATH = "app.tcss"
     TITLE = "UXTU4Linux"
 
-    def __init__(self, first_run: bool = False, dep_error: str | None = None,
-                 path_stale: bool = False) -> None:
+    def __init__(self, first_run: bool = False, dep_error: str | None = None) -> None:
         super().__init__()
         self._first_run = first_run
         self._dep_error = dep_error
-        self._path_stale = path_stale
 
     BINDINGS = [
         ("h", "show_tab('home')", "Home"),
@@ -88,7 +86,36 @@ class U4LApp(App):
         if self._first_run:
             from Assets.tui.wizard import SetupWizard
             self.push_screen(SetupWizard())
-        elif self._path_stale:
+        else:
+            self._deferred_startup()
+
+    @work(thread=True, exclusive=True, group="startup")
+    def _deferred_startup(self) -> None:
+        from Assets.core.hardware import check_ryzen_smu, ensure_max_clock
+        from Assets.daemon.service import service_path_stale
+        from Assets.core.ipc import get_client
+
+        ensure_max_clock()
+
+        dep_error = check_ryzen_smu()
+        if not dep_error and cfg.get("Info", "Type") == "Intel":
+            dep_error = ("Intel CPUs are not supported.\n\n"
+                         "UXTU4Linux only supports AMD Ryzen APUs and desktop CPUs.")
+
+        path_stale = not dep_error and service_path_stale()
+
+        client = get_client()
+        if not client.status().get("mode"):
+            client.apply_saved()
+
+        self.call_from_thread(self._post_startup, dep_error, path_stale)
+
+    def _post_startup(self, dep_error: str | None, path_stale: bool) -> None:
+        if dep_error:
+            from Assets.tui.modals import FatalErrorModal
+            self.push_screen(FatalErrorModal(dep_error))
+            return
+        if path_stale:
             from Assets.tui.modals import StalePathModal
             self.push_screen(StalePathModal())
         elif cfg.get("Settings", "SoftwareUpdate", "0") == "1":
@@ -246,5 +273,5 @@ class U4LApp(App):
                          lambda ok: self.push_screen(UpdateProgressModal(url)) if ok else None)
 
 
-def run(first_run: bool = False, dep_error: str | None = None, path_stale: bool = False):
-    return U4LApp(first_run=first_run, dep_error=dep_error, path_stale=path_stale).run()
+def run(first_run: bool = False, dep_error: str | None = None):
+    return U4LApp(first_run=first_run, dep_error=dep_error).run()
