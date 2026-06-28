@@ -202,36 +202,32 @@ def main() -> None:
     log.info("CPU: %s, Family: %s, Arch: %s", cpu, fam, arch)
 
     sb = secure_boot_enabled()
-    kmod_ok = smu.is_available() and smu.version_ok()
 
-    if kmod_ok:
-        log.info("ryzen_smu driver ready (version %s).", smu.get_version())
-    elif smu.is_available() and not smu.version_ok():
-        log.error(
-            "ryzen_smu version %s is too old (minimum: %s).\nInstall guide: %s",
-            smu.get_version(), smu.version_str(smu.MIN_VERSION), cfg.RYZEN_SMU_WIKI_URL,
-        )
-        if not sb and smu.init_pci_backend():
-            log.info("PCI backend active — sending commands directly via PCI config space.")
-        else:
-            log.warning("Running without SMU access — presets will not be applied.")
+    if not sb:
+        log.info("Secure Boot disabled — using PCI direct access backend.")
+        if not smu.init_pci_backend():
+            log.warning("PCI backend unavailable — presets will not be applied.")
     else:
-        if sb:
+        if smu.is_available() and smu.version_ok():
+            log.info("Secure Boot enabled — ryzen_smu driver ready (version %s).", smu.get_version())
+        elif smu.is_available() and not smu.version_ok():
+            ver = smu.get_version()
+            if ver == "unknown":
+                log.error("ryzen_smu is loaded but version cannot be determined (minimum: %s).\nInstall guide: %s",
+                          smu.version_str(smu.MIN_VERSION), cfg.RYZEN_SMU_WIKI_URL)
+            else:
+                log.error("ryzen_smu version %s is too old (minimum: %s).\nInstall guide: %s",
+                          ver, smu.version_str(smu.MIN_VERSION), cfg.RYZEN_SMU_WIKI_URL)
+            log.warning("Running without SMU access — presets will not be applied.")
+        else:
             from Assets.core.hardware import ryzen_smu_installed, ryzen_smu_signed
-            installed = ryzen_smu_installed()
-            if not installed:
+            if not ryzen_smu_installed():
                 log.error("ryzen_smu not installed. Required when Secure Boot is enabled.\nInstall guide: %s", cfg.RYZEN_SMU_WIKI_URL)
             elif not ryzen_smu_signed():
                 log.error("ryzen_smu not signed for Secure Boot.\nInstall guide: %s", cfg.RYZEN_SMU_WIKI_URL)
             else:
                 log.error("ryzen_smu installed but not loaded.\nInstall guide: %s", cfg.RYZEN_SMU_WIKI_URL)
             log.warning("Running without SMU access — presets will not be applied.")
-        else:
-            log.info("ryzen_smu not loaded — trying PCI direct access backend.")
-            if smu.init_pci_backend():
-                log.info("PCI backend active — sending commands directly via PCI config space.")
-            else:
-                log.warning("PCI backend unavailable. Running without SMU access — presets will not be applied.")
 
     daemon = PowerDaemon()
 
