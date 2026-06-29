@@ -188,7 +188,7 @@ class CommandsMixin:
             return {"ok": False, "error": f"disallowed dmidecode type: {dmi_type!r}"}
         try:
             log.debug("dmidecode -t %s", dmi_type)
-            out = _run_cmd(f"{cfg.DMIDECODE} -t {dmi_type}")
+            out = _run_cmd([cfg.DMIDECODE, "-t", dmi_type])
             return {"ok": True, "output": out}
         except Exception as exc:
             log.error("dmidecode failed: %s", exc)

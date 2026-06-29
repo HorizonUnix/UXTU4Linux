@@ -23,10 +23,10 @@ class AutomationsTab(VerticalScroll):
 
     def _slot_options(self) -> list[tuple[str, str]]:
         from Assets.tuning.power import get_presets
-        from Assets.tuning.custom import get_custom_preset_names, _display_name
+        from Assets.tuning.custom import get_custom_preset_names, display_name
         opts = [("None", "")]
         opts += [(f"PM - {n} Preset", n) for n in get_presets()]
-        opts += [(_display_name(n), n) for n in get_custom_preset_names()]
+        opts += [(display_name(n), n) for n in get_custom_preset_names()]
         return opts
 
     def compose(self) -> ComposeResult:
@@ -47,7 +47,9 @@ class AutomationsTab(VerticalScroll):
         if not sid.startswith("slot-"):
             return
         slot_id = sid[len("slot-"):]
-        slot = next(s for s in self._SLOTS if s[0] == slot_id)
+        slot = next((s for s in self._SLOTS if s[0] == slot_id), None)
+        if slot is None:
+            return
         getter, setter = slot[3], slot[4]
         value = event.value if isinstance(event.value, str) else ""
         if value == getter():

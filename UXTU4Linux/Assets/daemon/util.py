@@ -4,7 +4,6 @@ import atexit
 import fcntl
 import logging
 import os
-import shlex
 import subprocess
 import time
 from dataclasses import dataclass
@@ -15,7 +14,6 @@ from Assets.core import config as cfg
 _AC_TYPES = frozenset({"Mains", "USB", "USB_C", "USB_PD", "USB_PD_DRP", "USB_C_DRP"})
 
 _DAEMON_LOCK_FILE = "/run/uxtu4linux_daemon.lock"
-_daemon_lock_fh: object = None
 
 log = logging.getLogger("uxtu4linux")
 
@@ -25,14 +23,12 @@ def _clock_boottime() -> float:
 
 
 def _acquire_daemon_lock() -> bool:
-    global _daemon_lock_fh
     lock_fh = None
     try:
         lock_fh = open(_DAEMON_LOCK_FILE, "w")
         fcntl.flock(lock_fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
         lock_fh.write(str(os.getpid()))
         lock_fh.flush()
-        _daemon_lock_fh = lock_fh
         atexit.register(lock_fh.close)
         return True
     except (IOError, OSError):
@@ -41,11 +37,7 @@ def _acquire_daemon_lock() -> bool:
         return False
 
 
-def _run_cmd(command: str, timeout: float = 10.0) -> str:
-    try:
-        args = shlex.split(command)
-    except ValueError:
-        return ""
+def _run_cmd(args: list[str], timeout: float = 10.0) -> str:
     proc = subprocess.Popen(
         args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
     )
@@ -185,7 +177,9 @@ class PresetState:
 def _load_saved_preset() -> PresetState | None:
     cfg.load()
     user_mode = cfg.get("User", "Mode")
-    automation = bool(cfg.get("Automations", "OnAC", "") or cfg.get("Automations", "OnBattery", ""))
+    on_ac = cfg.get("Automations", "OnAC", "")
+    on_battery = cfg.get("Automations", "OnBattery", "")
+    automation = bool(on_ac or on_battery)
 
     result = _resolve_preset_args(user_mode)
     if result:

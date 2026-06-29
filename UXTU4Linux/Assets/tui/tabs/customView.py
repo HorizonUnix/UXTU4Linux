@@ -11,7 +11,7 @@ from Assets.tuning.custom import (
     APU_SECTION_TITLES, DT_SECTION_TITLES,
     _default_fields_for_current_cpu, _supported_field_keys, _active_sections,
     _section_indices, clamp_field, _enforce_clk_clamp, build_args,
-    save_preset, load_preset_fields, delete_preset, get_custom_preset_names, _display_name,
+    save_preset, load_preset_fields, delete_preset, get_custom_preset_names, display_name,
     unique_preset_name,
 )
 from Assets.tui.modals import ConfirmModal
@@ -25,7 +25,7 @@ class CustomEditor(VerticalScroll):
         self._cpu_type = cfg.get("Info", "Type")
         self._all_sections = DT_SECTION_TITLES if self._cpu_type == "Amd_Desktop_Cpu" else APU_SECTION_TITLES
         active = cfg.get("User", "Mode")
-        names = [_display_name(n) for n in get_custom_preset_names()]
+        names = [display_name(n) for n in get_custom_preset_names()]
         if active in names:
             self.fields = load_preset_fields(active) or _default_fields_for_current_cpu()
             self.preset_name = active
@@ -38,7 +38,7 @@ class CustomEditor(VerticalScroll):
         self.sections = _active_sections(self._all_sections, self.fields, self.supported)
 
     def compose(self) -> ComposeResult:
-        names = [_display_name(n) for n in get_custom_preset_names()]
+        names = [display_name(n) for n in get_custom_preset_names()]
         sel_kwargs = {"value": self.preset_name} if self.preset_name in names else {}
         with Vertical(id="editor_topbar"):
             yield Static("Custom Presets", classes="card_title")
@@ -221,7 +221,7 @@ class CustomEditor(VerticalScroll):
         await self.recompose()
 
     def _refresh_presets(self, select: str | None) -> None:
-        names = [_display_name(n) for n in get_custom_preset_names()]
+        names = [display_name(n) for n in get_custom_preset_names()]
         sel = self.query_one("#preset_select", Select)
         sel.set_options([(n, n) for n in names])
         if select and select in names:

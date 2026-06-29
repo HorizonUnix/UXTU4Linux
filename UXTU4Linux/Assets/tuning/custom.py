@@ -404,7 +404,7 @@ _CLK_PAIRS = [
 ]
 
 
-def _display_name(internal_name: str) -> str:
+def display_name(internal_name: str) -> str:
     return internal_name.removesuffix("_custom_preset")
 
 

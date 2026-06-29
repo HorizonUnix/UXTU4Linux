@@ -62,7 +62,6 @@ def check_ryzen_smu() -> str | None:
         signed = installed and ("sig_id:" in result.stdout or "signer:" in result.stdout)
     except Exception:
         installed = False
-        signed = False
 
     if not installed:
         return f"ryzen_smu kernel module is not installed.\n\n{_SMU_INSTALL_GUIDE}"

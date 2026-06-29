@@ -13,18 +13,15 @@ from Assets.flows.setup import check_integrity, init_config, needs_setup, ensure
 
 cfg.load()
 _TUI_LOCK_FILE = "/tmp/uxtu4linux_tui.lock"
-_tui_lock_fh = None
 
 
 def _acquire_single_instance() -> bool:
-    global _tui_lock_fh
     lock_fh = None
     try:
         lock_fh = open(_TUI_LOCK_FILE, "w")
         _fcntl.flock(lock_fh, _fcntl.LOCK_EX | _fcntl.LOCK_NB)
         lock_fh.write(str(os.getpid()))
         lock_fh.flush()
-        _tui_lock_fh = lock_fh
         atexit.register(lock_fh.close)
         return True
     except (IOError, OSError):

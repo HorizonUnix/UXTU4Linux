@@ -120,11 +120,6 @@ class PowerDaemon(CommandsMixin, LoopsMixin, AdaptiveMixin):
             except zmq.ZMQError as exc:
                 log.error("ZMQ recv error: %s — shutting down.", exc)
                 break
-            cmd = None
-            try:
-                cmd = json.loads(raw).get("cmd")
-            except json.JSONDecodeError:
-                pass
             resp = self.handle(raw)
             try:
                 sock.send_string(resp)
