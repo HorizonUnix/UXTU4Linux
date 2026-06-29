@@ -1,3 +1,28 @@
+## [1.1.0]
+
+The headline addition is PCI direct access: the daemon now talks to the CPU without ryzen_smu on most systems. ryzen_smu is only needed when Secure Boot is on, because kernel lockdown blocks raw PCI config writes in that case. The Status tab was reworked to show adaptive state alongside daemon state in one panel, the Home tab picked up iGPU graphs, and the installer now handles non-systemd setups and distros with no supported package manager.
+
+### New PCI direct access backend
+- **No kernel module on most systems.** When Secure Boot is off, the daemon accesses the SMU through the northbridge PCI config space directly. ryzen_smu is still required when Secure Boot is on.
+
+### Status tab
+- **Merged into one panel.** Adaptive state, automations and SMU output are now all in the main status panel instead of a separate card. The panel refreshes every second while the tab is open.
+
+### Home tab
+- **iGPU graphs.** iGPU clock and usage graphs are now shown on APUs when the hardware supports it.
+
+### Version mismatch detection
+- **Notify on version mismatch.** If the running daemon is a different version than the TUI, the app shows a warning at startup. Usually happens after a partial update — restart the daemon to fix it.
+
+### Updater
+- **Deps reinstalled on update.** The updater now reinstalls `requirements.txt` into the venv as part of the update, so a new dependency added in a release is picked up automatically. (Fixed #98)
+
+### Under the hood
+- **Code cleanup and performance.** Dead code removed across the daemon, TUI and engine. The status refresh loop was simplified and the async thread count reduced. Several hot paths were tightened to lower CPU overhead during idle polling.
+- **Bug fixes.** Various minor bugs fixed across the TUI, daemon and update flow.
+
+**Full changelog:** https://github.com/HorizonUnix/UXTU4Linux/compare/1.0.0...1.1.0
+
 ## [1.0.0]
 
 After two years of development, UXTU4Linux finally reaches 1.0.0 with all the core features in place. The headline addition is Adaptive Mode: instead of holding one fixed preset, the app now tunes your CPU live from temperature and load. The Home tab gained live graphs, Automations were rebuilt to be simpler, and the whole codebase was reorganized underneath.
