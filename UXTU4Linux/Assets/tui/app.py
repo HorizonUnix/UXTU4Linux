@@ -105,8 +105,19 @@ class U4LApp(App):
         path_stale = not dep_error and service_path_stale()
 
         client = get_client()
-        if not client.status().get("mode"):
+        st = client.status()
+        if not st.get("mode"):
             client.apply_saved()
+
+        daemon_ver = st.get("version", "")
+        if daemon_ver and daemon_ver != cfg.LOCAL_VERSION:
+            self.call_from_thread(
+                self.notify,
+                f"TUI is v{cfg.LOCAL_VERSION}, daemon is v{daemon_ver}. Restart the daemon to sync.",
+                title="Version mismatch",
+                severity="warning",
+                timeout=12,
+            )
 
         self.call_from_thread(self._post_startup, dep_error, path_stale)
 

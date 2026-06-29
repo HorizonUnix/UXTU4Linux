@@ -122,6 +122,15 @@ def _value(data, offset):
     return result
 
 
+def _parse(data: bytes, version: int) -> PmSample:
+    sample = PmSample(version)
+    for name, offset in _FIXED.items():
+        setattr(sample, name, _value(data, offset))
+    for name, version_map in _VERSION_MAPS.items():
+        setattr(sample, name, _value(data, version_map.get(version)))
+    return sample
+
+
 def read(table_path=PM_TABLE_PATH, version_path=PM_TABLE_VERSION_PATH):
     version = _read_version(version_path)
     if version is None:
@@ -129,9 +138,16 @@ def read(table_path=PM_TABLE_PATH, version_path=PM_TABLE_VERSION_PATH):
     data = _read_bytes(table_path)
     if data is None:
         return None
-    sample = PmSample(version)
-    for name, offset in _FIXED.items():
-        setattr(sample, name, _value(data, offset))
-    for name, version_map in _VERSION_MAPS.items():
-        setattr(sample, name, _value(data, version_map.get(version)))
-    return sample
+    return _parse(data, version)
+
+
+def read_pci(family: str) -> PmSample | None:
+    try:
+        from Assets.amd.smu import read_pm_table_pci
+        result = read_pm_table_pci(family)
+    except Exception:
+        return None
+    if result is None:
+        return None
+    data, version = result
+    return _parse(data, version)

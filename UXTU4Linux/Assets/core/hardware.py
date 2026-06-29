@@ -22,7 +22,7 @@ def check_binaries() -> str | None:
             "Fedora/RHEL   : sudo dnf install dmidecode\n"
             "Arch          : sudo pacman -S dmidecode\n"
             "openSUSE      : sudo zypper install dmidecode\n\n"
-            f"Install guide: {cfg.INSTALL_WIKI_URL}"
+            f"Install guide: {cfg.DMIDECODE_WIKI_URL}"
         )
     cfg.DMIDECODE = dmi
     return None

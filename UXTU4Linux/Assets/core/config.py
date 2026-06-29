@@ -10,8 +10,8 @@ LOCAL_BUILD = "M1-beta-24Jun26-r1"
 
 GITHUB_API_URL = "https://api.github.com/repos/HorizonUnix/UXTU4Linux/releases/latest"
 LATEST_VER_URL = "https://github.com/HorizonUnix/UXTU4Linux/releases/latest"
-RYZEN_SMU_WIKI_URL = "https://github.com/HorizonUnix/UXTU4Linux/wiki/Linux-Installation#2-install-the-ryzen_smu-kernel-module"
-INSTALL_WIKI_URL = "https://github.com/HorizonUnix/UXTU4Linux/wiki/Linux-Installation#3-install-uxtu4linux"
+RYZEN_SMU_WIKI_URL = "https://github.com/HorizonUnix/UXTU4Linux/wiki/Linux-Installation#2-install-ryzen_smu-secure-boot-only"
+DMIDECODE_WIKI_URL = "https://github.com/HorizonUnix/UXTU4Linux/wiki/Linux-Installation#3-install-uxtu4linux"
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 ASSETS_DIR = os.path.join(_ROOT, "Assets")

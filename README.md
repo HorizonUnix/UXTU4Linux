@@ -1,5 +1,5 @@
 <picture><img align="center" src="/Img/Banner.gif"/></picture>
-<h4>Powered by ryzen_smu and Python</h4>
+<h4>Powered by AMD SMU and Python</h4>
 
 [![GitHub Downloads](https://img.shields.io/github/downloads/HorizonUnix/UXTU4Linux/total?style=flat-square&color=blue)](https://github.com/HorizonUnix/UXTU4Linux/releases)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-yellow?style=flat-square)](https://www.python.org/)
@@ -8,7 +8,7 @@
 
 ## Overview
 
-UXTU4Linux is a power management tool for **AMD Ryzen APUs and desktop CPUs** on Linux. It talks to the CPU directly through the [ryzen_smu](https://github.com/amkillam/ryzen_smu) kernel module, so you can change power limits, temperature limits and more without touching the BIOS. The interactive terminal UI runs as your normal user, and a small background daemon (systemd service) does the privileged work and auto-switches presets for you.
+UXTU4Linux is a power management tool for **AMD Ryzen APUs and desktop CPUs** on Linux. It talks to the CPU directly through PCI register access — no kernel module required on most systems. When Secure Boot is enabled, it uses the [ryzen_smu](https://github.com/amkillam/ryzen_smu) kernel module instead. Either way, you can change power limits, temperature limits and more without touching the BIOS. The interactive terminal UI runs as your normal user, and a small background daemon (systemd service) does the privileged work and auto-switches presets for you.
 
 **What it can do:**
 - Built-in Eco / Balance / Performance / Extreme presets for a wide range of Ryzen APUs, desktop CPUs and Framework Laptops
@@ -29,11 +29,11 @@ UXTU4Linux is a power management tool for **AMD Ryzen APUs and desktop CPUs** on
 | Platform | Status |
 |----------|--------|
 | Linux with systemd, Python 3.10+ | Actively supported |
-| Linux without systemd (OpenRC, runit, etc.) | Works, but you start the daemon yourself |
+| Linux without systemd (OpenRC, runit, etc.) | Supported — installer sets everything up, you start the daemon manually |
 | Intel | Not supported |
 
-> [!IMPORTANT]
-> Requires the **ryzen_smu** kernel module, version 0.1.7 or newer. The [Wiki](../../wiki) has build instructions for each distro.
+> [!NOTE]
+> **ryzen_smu is only needed when Secure Boot is enabled.** On most systems (Secure Boot off), UXTU4Linux uses PCI direct access and works out of the box. If Secure Boot is on, install ryzen_smu ≥ 0.1.7 and enroll the signing key — see the [Wiki](../../wiki) for per-distro instructions.
 
 ---
 

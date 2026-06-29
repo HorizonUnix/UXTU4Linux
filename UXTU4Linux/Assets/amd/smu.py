@@ -238,6 +238,129 @@ def _send_pci(table: dict, default: tuple, family: str, op: int, arg0: int) -> i
         return SMU_FAILED
 
 
+def _smn_send_pci_get_args(fd: int, msg_addr: int, rsp_addr: int, args_addr: int,
+                            op: int, arg0: int) -> tuple[int, int, int]:
+    _smn_write_pci(fd, rsp_addr, 0)
+    _smn_write_pci(fd, args_addr, arg0)
+    for i in range(1, _NARGS):
+        _smn_write_pci(fd, args_addr + i * 4, 0)
+    _smn_write_pci(fd, msg_addr, op)
+    rsp = 0
+    for _ in range(_POLL_FAST):
+        rsp = _smn_read_pci(fd, rsp_addr)
+        if rsp:
+            break
+    if not rsp:
+        deadline = time.monotonic() + _POLL_DEADLINE_S
+        while time.monotonic() < deadline:
+            time.sleep(_POLL_SLEEP_S)
+            rsp = _smn_read_pci(fd, rsp_addr)
+            if rsp:
+                break
+    if not rsp:
+        return SMU_FAILED, 0, 0
+    out0 = _smn_read_pci(fd, args_addr)
+    out1 = _smn_read_pci(fd, args_addr + 4)
+    return rsp, out0, out1
+
+
+def _send_pci_rsmu_get_args(family: str, op: int, arg0: int = 0) -> tuple[int, int, int]:
+    msg, rsp, args = _RSMU.get(family, _RSMU_DEFAULT)
+    try:
+        fd = os.open(_PCI_CONFIG, os.O_RDWR)
+        try:
+            with _lock:
+                return _smn_send_pci_get_args(fd, msg, rsp, args, op, arg0)
+        finally:
+            os.close(fd)
+    except OSError:
+        return SMU_FAILED, 0, 0
+
+
+_PM_TABLE_CMDS: dict[str, tuple[int, int, int, bool, bool]] = {
+    "RavenRidge":      (0xC, 0xB,  0x3D, False, True),
+    "Picasso":         (0xC, 0xB,  0x3D, False, True),
+    "Dali":            (0xC, 0xB,  0x3D, False, True),
+    "Pollock":         (0xC, 0xB,  0x3D, False, True),
+    "Renoir":          (0x6, 0x66, 0x65, False, False),
+    "Lucienne":        (0x6, 0x66, 0x65, False, False),
+    "Cezanne_Barcelo": (0x6, 0x66, 0x65, False, False),
+    "VanGogh":         (0x6, 0x66, 0x65, False, False),
+    "Mendocino":       (0x6, 0x66, 0x65, False, False),
+    "Rembrandt":       (0x6, 0x66, 0x65, True,  False),
+    "PhoenixPoint":    (0x6, 0x66, 0x65, True,  False),
+    "PhoenixPoint2":   (0x6, 0x66, 0x65, True,  False),
+    "HawkPoint":       (0x6, 0x66, 0x65, True,  False),
+    "HawkPoint2":      (0x6, 0x66, 0x65, True,  False),
+    "SonomaValley":    (0x6, 0x66, 0x65, True,  False),
+    "StrixPoint":      (0x6, 0x66, 0x65, True,  False),
+    "KrackanPoint":    (0x6, 0x66, 0x65, True,  False),
+    "KrackanPoint2":   (0x6, 0x66, 0x65, True,  False),
+    "StrixHalo":       (0x6, 0x66, 0x65, True,  False),
+}
+
+_PM_TABLE_SIZES: dict[int, int] = {
+    0x1E0001: 0x568, 0x1E0002: 0x580, 0x1E0003: 0x578,
+    0x1E0004: 0x608, 0x1E0005: 0x608, 0x1E000A: 0x608, 0x1E0101: 0x608,
+    0x370000: 0x794, 0x370001: 0x884, 0x370002: 0x88C,
+    0x370003: 0x8AC, 0x370004: 0x8AC, 0x370005: 0x8C8,
+    0x3F0000: 0x7AC,
+    0x400001: 0x910, 0x400002: 0x928, 0x400003: 0x94C,
+    0x400004: 0x944, 0x400005: 0x944,
+    0x450004: 0xAA4, 0x450005: 0xAB0,
+    0x4C0003: 0xB18, 0x4C0004: 0xB1C, 0x4C0005: 0xAF8,
+    0x4C0006: 0xAFC, 0x4C0007: 0xB00, 0x4C0008: 0xAF0, 0x4C0009: 0xB00,
+    0x5D0008: 0xD54, 0x5D0009: 0xD54, 0x5D000B: 0xD54,
+    0x64020C: 0xE50,
+}
+
+
+def read_pm_table_pci(family: str) -> tuple[bytes, int] | None:
+    cmds = _PM_TABLE_CMDS.get(family)
+    if cmds is None:
+        return None
+    ver_cmd, addr_cmd, transfer_cmd, addr_64bit, needs_arg3 = cmds
+    extra = 3 if needs_arg3 else 0
+
+    rsp, ver, _ = _send_pci_rsmu_get_args(family, ver_cmd, 0)
+    if rsp != SMU_OK or not ver:
+        return None
+
+    rsp, addr_lo, addr_hi = _send_pci_rsmu_get_args(family, addr_cmd, extra)
+    if rsp != SMU_OK:
+        return None
+    phys = (addr_hi << 32 | addr_lo) if addr_64bit else addr_lo
+    if not phys:
+        return None
+
+    rsp, _, _ = _send_pci_rsmu_get_args(family, transfer_cmd, extra)
+    if rsp == SMU_REJECTED_PREREQ:
+        time.sleep(0.01)
+        rsp, _, _ = _send_pci_rsmu_get_args(family, transfer_cmd, extra)
+    if rsp != SMU_OK:
+        return None
+
+    table_size = _PM_TABLE_SIZES.get(ver, 0x1000)
+    try:
+        import mmap as _mmap
+        page = _mmap.PAGESIZE
+        page_off = phys & ~(page - 1)
+        inner = phys - page_off
+        fd = os.open("/dev/mem", os.O_RDONLY | os.O_SYNC)
+        try:
+            mm = _mmap.mmap(fd, inner + table_size, _mmap.MAP_SHARED,
+                            _mmap.PROT_READ, offset=page_off)
+            try:
+                mm.seek(inner)
+                return mm.read(table_size), ver
+            finally:
+                mm.close()
+        finally:
+            os.close(fd)
+    except OSError:
+        return None
+
+
 def status_name(code: int) -> str:
     return {
         SMU_OK:              "OK",

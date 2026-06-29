@@ -25,6 +25,8 @@ trap '[[ -n "$TMP_DIR" && ( "$TMP_DIR" == /tmp/* || "$TMP_DIR" == /var/tmp/* ) ]
 
 CURRENT_USER="$(whoami)"
 CURRENT_GROUP="$(id -gn)"
+HAS_SYSTEMD=false
+command -v systemctl &>/dev/null && HAS_SYSTEMD=true
 
 resolve_release_tag() {
     local tag=""
@@ -46,21 +48,8 @@ detect_pm() {
     elif command -v yum     &>/dev/null; then echo "yum"
     elif command -v pacman  &>/dev/null; then echo "pacman"
     elif command -v zypper  &>/dev/null; then echo "zypper"
-    else die "Unsupported distro — see manual installation: https://github.com/HorizonUnix/UXTU4Linux/wiki/Linux-Installation"
+    else echo "unknown"
     fi
-}
-
-check_systemd() {
-    if ! command -v systemctl &>/dev/null; then
-        echo ""
-        warn "systemd is not available on this system."
-        info "This installer requires systemd to manage the background daemon."
-        info "For non-systemd systems, see the manual installation guide:"
-        info "https://github.com/HorizonUnix/UXTU4Linux/wiki/Linux-Installation"
-        echo ""
-        die "Unsupported init system."
-    fi
-    ok "systemd detected."
 }
 
 ensure_python310() {
@@ -113,6 +102,9 @@ ensure_python310() {
             sudo zypper install -y --quiet python3 python3-pip &>/dev/null \
                 || die "Failed to install Python via zypper."
             ;;
+        unknown)
+            die "Python 3.10+ is required but not found and cannot be installed automatically.\nInstall it with your distro's package manager and re-run."
+            ;;
     esac
 
     for candidate in python3.14 python3.13 python3.12 python3.11 python3.10 python3; do
@@ -156,6 +148,21 @@ install_deps() {
             sudo zypper install -y --quiet \
                 python3 python3-pip \
                 dmidecode wget unzip curl &>/dev/null
+            ;;
+        unknown)
+            local missing=()
+            command -v dmidecode &>/dev/null || missing+=("dmidecode")
+            command -v unzip     &>/dev/null || missing+=("unzip")
+            { command -v wget &>/dev/null || command -v curl &>/dev/null; } \
+                || missing+=("wget or curl")
+            if [[ ${#missing[@]} -gt 0 ]]; then
+                echo ""
+                warn "No supported package manager found. Please install the following and re-run:"
+                for pkg in "${missing[@]}"; do info "  · $pkg"; done
+                echo ""
+                die "Missing required tools."
+            fi
+            ok "Required tools already present."
             ;;
     esac
     ok "Dependencies installed."
@@ -262,10 +269,11 @@ EOF
 }
 
 daemon_is_installed() {
-    [[ -f "$SERVICE_FILE" ]]
+    $HAS_SYSTEMD && [[ -f "$SERVICE_FILE" ]]
 }
 
 restart_daemon() {
+    $HAS_SYSTEMD || return 0
     info "Restarting daemon..."
     sudo systemctl daemon-reload
     sudo systemctl restart "$SERVICE_NAME" \
@@ -320,7 +328,7 @@ uninstall() {
     hr
     echo ""
 
-    if command -v systemctl &>/dev/null && [[ -f "$SERVICE_FILE" ]]; then
+    if $HAS_SYSTEMD && [[ -f "$SERVICE_FILE" ]]; then
         info "Removing daemon service..."
         sudo systemctl stop "$SERVICE_NAME" 2>/dev/null || true
         sudo systemctl disable "$SERVICE_NAME" 2>/dev/null || true
@@ -371,6 +379,17 @@ run_setup() {
     echo ""
     echo -e "    ${_B}uxtu4linux${_R}"
     echo ""
+
+    if ! $HAS_SYSTEMD; then
+        warn "No systemd detected — the daemon must be started manually."
+        info "Start the daemon (needs root) before running the app:"
+        echo ""
+        echo -e "    ${_B}sudo $VENV_PYTHON $SRC_DIR/Assets/daemon/daemon.py${_R}"
+        echo ""
+        info "For OpenRC / runit / s6 service examples, see the wiki:"
+        info "https://github.com/HorizonUnix/UXTU4Linux/wiki/Linux-Installation"
+        echo ""
+    fi
 }
 
 main() {
@@ -393,8 +412,17 @@ main() {
 
     local pm
     pm="$(detect_pm)"
-    info "Package manager: $pm"
-    check_systemd
+
+    if [[ "$pm" == "unknown" ]]; then
+        warn "No supported package manager found — checking for required tools."
+    else
+        info "Package manager: $pm"
+    fi
+
+    if ! $HAS_SYSTEMD; then
+        warn "systemd not found — daemon will need to be started manually after install."
+        echo ""
+    fi
 
     if daemon_is_installed; then
         echo ""

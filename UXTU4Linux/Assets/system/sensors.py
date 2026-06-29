@@ -201,7 +201,12 @@ def _reconcile(trusted, secondary, tolerance, label):
 
 
 def sample():
-    pm = pmtable.read()
+    from Assets.amd import smu as _smu
+    if _smu.active_backend() == "pci":
+        from Assets.core import config as _cfg
+        pm = pmtable.read_pci(_cfg.get("Info", "Family", ""))
+    else:
+        pm = pmtable.read()
     temp = _reconcile(_cpu_temp(), pm.tctl_temp if pm else None, 5.0, "cpu_temp")
     load = _reconcile(_cpu_load(), pm.cclk_busy if pm else None, 15.0, "cpu_load")
     pm_power = None
