@@ -27,7 +27,7 @@ _POLL_SLEEP_S = 0.0001
 _POLL_DEADLINE_S = 1.0
 _lock = threading.Lock()
 
-_backend = "kmod"
+_backend = "ryzen_smu"
 
 _MP1: dict[str, tuple[int, int, int]] = {
     "SummitRidge":  (0x3B10528, 0x3B10564, 0x3B10598),

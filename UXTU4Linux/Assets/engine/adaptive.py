@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 
 _POWER_INCREMENT = 2
@@ -107,7 +109,7 @@ def update_igpu_clock(state, max_clock, min_clock, max_temp, temperature, curren
         state.avg_gpu_load = gpu_load
     state.gpu_load_samples.append(gpu_load)
     if len(state.gpu_load_samples) > _WINDOW:
-        oldest = state.gpu_last_load_samples.pop(0) if state.gpu_last_load_samples else 0
+        oldest = state.gpu_load_samples.pop(0)
         state.avg_gpu_load = ((state.avg_gpu_load * _WINDOW) - oldest + gpu_load) / _WINDOW
     else:
         state.avg_gpu_load = ((state.avg_gpu_load * (len(state.gpu_load_samples) - 1)) + gpu_load) / len(state.gpu_load_samples)

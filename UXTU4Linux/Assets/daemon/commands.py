@@ -116,6 +116,7 @@ class CommandsMixin:
         return {"ok": True}
 
     def _cmd_status(self, _msg: dict) -> dict:
+        from Assets.amd import smu
         on_ac = _on_ac()
         with self._lock:
             status = {
@@ -129,6 +130,12 @@ class CommandsMixin:
                 "last_output": self._last_output,
                 "last_rejected": self._last_rejected,
                 "version": cfg.LOCAL_VERSION,
+                "backend": smu.active_backend(),
+                "adaptive": {
+                    "running": self._adaptive_running,
+                    "preset": self._adaptive_preset_name,
+                    "applied": self._adaptive_applied,
+                },
             }
         return status
 
@@ -171,13 +178,6 @@ class CommandsMixin:
         output = self.apply_preset_state_once(state)
         return {"ok": True, "output": output}
 
-
-    def _cmd_shutdown(self, _msg: dict) -> dict:
-        self._stop_loop()
-        self._stop_monitor()
-        self._stop_adaptive()
-        self._stop_suspend_monitor()
-        return {"ok": True}
 
     def _cmd_dmidecode(self, msg: dict) -> dict:
         dmi_type = msg.get("type", "")

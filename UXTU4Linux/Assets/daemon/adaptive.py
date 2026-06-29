@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import threading
 from dataclasses import fields as dataclass_fields
+from pathlib import Path
 
 from Assets.core import config as cfg
 from Assets.daemon.loops import _STOP_LOOP_TIMEOUT_S
@@ -14,7 +15,7 @@ ADAPTIVE_SESSION_FILE = "/run/uxtu4linux_adaptive"
 def _mark_adaptive_session(active: bool) -> None:
     try:
         if active:
-            open(ADAPTIVE_SESSION_FILE, "w").close()
+            Path(ADAPTIVE_SESSION_FILE).touch()
         else:
             os.remove(ADAPTIVE_SESSION_FILE)
     except OSError:
@@ -104,10 +105,10 @@ class AdaptiveMixin:
 
     def _adaptive_interval(self):
         try:
-            value = float(cfg.get("Adaptive", "interval", "2"))
+            value = int(cfg.get("Adaptive", "interval", "2"))
         except (TypeError, ValueError):
-            value = 2.0
-        return min(8.0, max(1.0, value))
+            value = 2
+        return min(8, max(1, value))
 
     def _cmd_adaptive_start(self, msg):
         from Assets.engine import adaptive
@@ -156,22 +157,4 @@ class AdaptiveMixin:
             return {"ok": True, "reverted": False}
         return {"ok": True, "reverted": bool(revert.get("ok"))}
 
-    def _cmd_adaptive_status(self, _msg):
-        with self._lock:
-            sample = self._adaptive_sample
-            data = {}
-            if sample is not None:
-                data = {
-                    "cpu_temp": sample.cpu_temp, "cpu_load": sample.cpu_load,
-                    "cpu_power": sample.cpu_power, "cpu_clk": sample.cpu_clk,
-                    "igpu_load": sample.igpu_load, "igpu_clk": sample.igpu_clk,
-                }
-            return {
-                "ok": True,
-                "running": self._adaptive_running,
-                "preset": self._adaptive_preset_name,
-                "sample": data,
-                "applied": self._adaptive_applied,
-                "caps": sorted(self._adaptive_caps),
-            }
 

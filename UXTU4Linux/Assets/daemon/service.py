@@ -51,7 +51,7 @@ def _ensure_venv() -> bool:
             return False
 
     probe = subprocess.run(
-        [venv_python, "-c", "import zmq, textual, textual-plotext"],
+        [venv_python, "-c", "import zmq; import textual; import textual_plotext"],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
     if probe.returncode != 0:

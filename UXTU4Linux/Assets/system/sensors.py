@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import glob
 import logging
 import os
@@ -27,10 +29,6 @@ class SensorSample:
     igpu_load: Optional[float] = None
     igpu_clk: Optional[float] = None
     mem_clk: Optional[float] = None
-    igpu_temp: Optional[float] = None
-    applied_stapm: Optional[float] = None
-    applied_fast: Optional[float] = None
-    applied_slow: Optional[float] = None
 
 
 def reset_cache():
@@ -219,10 +217,6 @@ def sample():
         igpu_load=_igpu_load(),
         igpu_clk=igpu_clk,
         mem_clk=_mem_clk(),
-        igpu_temp=pm.gfx_temp if pm else None,
-        applied_stapm=pm.stapm_limit if pm else None,
-        applied_fast=pm.fast_limit if pm else None,
-        applied_slow=pm.slow_limit if pm else None,
     )
 
 

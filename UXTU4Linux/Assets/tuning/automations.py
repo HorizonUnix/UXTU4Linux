@@ -2,10 +2,6 @@ from __future__ import annotations
 from Assets.core import config as cfg
 
 
-def automation_enabled() -> bool:
-    return bool(get_ac_preset() or get_battery_preset())
-
-
 def get_ac_preset() -> str:
     return cfg.get("Automations", "OnAC", "")
 

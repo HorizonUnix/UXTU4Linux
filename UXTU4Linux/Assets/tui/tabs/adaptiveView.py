@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.widgets import Button, Collapsible, Input, Label, Select, Static, Switch
@@ -78,7 +80,7 @@ class AdaptiveTab(VerticalScroll):
         desc = Static("How often adaptive mode polls sensors and adjusts, in seconds.",
                       classes="field_hint", markup=False)
         box = Input(self._current_interval(), id="adaptive_interval",
-                    classes="card_value", restrict=r"\d*\.?\d*")
+                    classes="card_value", restrict=r"\d*")
         row = Horizontal(box, Static("s", classes="unit"), classes="card_controls")
         return Vertical(head, desc, row, classes="field_card")
 
@@ -150,15 +152,19 @@ class AdaptiveTab(VerticalScroll):
                 except Exception:
                     pass
         self._refresh_status()
-        self.set_interval(1.5, self._refresh_status)
+        self.set_interval(1.0, self._refresh_status)
+
+    _ignore_cache_until: float = 0.0
 
     def _refresh_status(self) -> None:
-        from Assets.core import ipc
-        st = ipc.get_client().adaptive_status()
-        running = bool(st.get("running"))
+        if time.monotonic() < self._ignore_cache_until:
+            return
+        adaptive = self.app._last_status.get("adaptive", {})
+        self._render_status(bool(adaptive.get("running")), adaptive.get("preset") or "")
+
+    def _render_status(self, running: bool, preset: str) -> None:
         self._running = running
-        preset = st.get("preset")
-        self._running_preset = preset or ""
+        self._running_preset = preset
         self.query_one("#adaptive_start", Button).label = "Stop" if running else "Start"
         if running and preset:
             sel = self.query_one("#adaptive_select", Select)
@@ -197,10 +203,10 @@ class AdaptiveTab(VerticalScroll):
 
     def _persist_run(self, target: str) -> None:
         try:
-            value = float(self.query_one("#adaptive_interval", Input).value)
+            value = int(self.query_one("#adaptive_interval", Input).value)
         except ValueError:
-            value = 2.0
-        cfg.set_config("Adaptive", "interval", str(min(8.0, max(1.0, value))))
+            value = 2
+        cfg.set_config("Adaptive", "interval", str(min(8, max(1, value))))
         if target:
             cfg.set_config("Adaptive", "preset", target)
         cfg.save()
@@ -255,7 +261,8 @@ class AdaptiveTab(VerticalScroll):
             if self._running and name == self._running_preset:
                 self._persist_run(name)
                 ipc.get_client().adaptive_start(name, asdict(preset))
-                self._refresh_status()
+                self._render_status(True, name)
+                self._ignore_cache_until = time.monotonic() + 2.0
                 self.app.notify(f"Preset '{name}' saved and applied.", title="Saved")
             else:
                 self.app.notify(f"Preset '{name}' saved.", title="Saved")
@@ -289,16 +296,19 @@ class AdaptiveTab(VerticalScroll):
             if self._running and self._running_preset and \
                     self._running_preset not in adaptivemanager.names():
                 ipc.get_client().adaptive_stop()
+                self._render_status(False, "")
+                self._ignore_cache_until = time.monotonic() + 2.0
                 self.app.notify(f"Preset '{sel}' deleted — Adaptive Mode stopped.", title="Deleted")
             else:
                 self.app.notify(f"Preset '{sel}' deleted.", title="Deleted")
-            self._refresh_status()
         elif bid == "adaptive_start":
             client = ipc.get_client()
             if self._running:
                 result = client.adaptive_stop()
                 if result.get("ok"):
                     self._persist_run("")
+                    self._render_status(False, "")
+                    self._ignore_cache_until = time.monotonic() + 2.0
                     self.app.notify("Adaptive Mode stopped.", title="Adaptive Mode")
                 else:
                     self.app.notify(result.get("error", "Failed to stop Adaptive Mode."),
@@ -321,8 +331,9 @@ class AdaptiveTab(VerticalScroll):
                 self._persist_run(target)
                 result = client.adaptive_start(target, asdict(preset))
                 if result.get("ok"):
+                    self._render_status(True, target)
+                    self._ignore_cache_until = time.monotonic() + 2.0
                     self.app.notify(f"Adaptive Mode started — {target}.", title="Adaptive Mode")
                 else:
                     self.app.notify(result.get("error", "Failed to start Adaptive Mode."),
                                     title="Adaptive Mode", severity="error")
-            self._refresh_status()

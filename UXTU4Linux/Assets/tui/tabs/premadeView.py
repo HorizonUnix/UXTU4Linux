@@ -7,7 +7,7 @@ from textual.widgets import Button, Static
 
 from Assets.core import config as cfg
 from Assets.tuning import power
-from Assets.tui.helpers import ADAPTIVE_ON_MSG, adaptive_running
+from Assets.tui.helpers import ADAPTIVE_ON_MSG
 
 _COLOR = {"Eco": "eco", "Balance": "balance", "Performance": "perf", "Extreme": "extreme"}
 
@@ -42,6 +42,7 @@ class PowerTab(VerticalScroll):
 
     def on_show(self) -> None:
         self._sync_active()
+        self._sync_from_daemon()
 
     def _sync_active(self) -> None:
         active = cfg.get("User", "Mode")
@@ -50,6 +51,12 @@ class PowerTab(VerticalScroll):
             self._show_detail(active)
         else:
             self._clear_detail()
+
+    def _sync_from_daemon(self) -> None:
+        st = self.app._last_status
+        mode = (st.get("mode") or "").removesuffix("_custom_preset")
+        if mode:
+            self._highlight(mode)
 
     def _highlight(self, active: str) -> None:
         for name in self._presets:
@@ -72,7 +79,7 @@ class PowerTab(VerticalScroll):
         bid = event.button.id or ""
         if not bid.startswith("pbtn-"):
             return
-        if adaptive_running():
+        if self.app._last_status.get("adaptive", {}).get("running"):
             self.app.notify(ADAPTIVE_ON_MSG, title="Adaptive Mode active", severity="warning")
             return
         name = bid[len("pbtn-"):]
@@ -82,8 +89,8 @@ class PowerTab(VerticalScroll):
 
     @work(thread=True, exclusive=True, group="apply")
     def apply_preset_worker(self, args: str, mode: str) -> None:
-        from Assets.tui.helpers import do_apply
-        result = do_apply(args, mode)
+        from Assets.tuning.power import apply_preset
+        result = apply_preset(args, mode)
         self.app.call_from_thread(self._notify_result, mode, result)
 
     def _notify_result(self, mode: str, result: dict) -> None:

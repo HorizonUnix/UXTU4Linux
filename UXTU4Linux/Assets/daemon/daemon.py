@@ -60,13 +60,11 @@ class PowerDaemon(CommandsMixin, LoopsMixin, AdaptiveMixin):
             "stop_loop": self._cmd_stop_loop,
             "status": self._cmd_status,
             "apply_saved": self._cmd_apply_saved,
-            "shutdown": self._cmd_shutdown,
             "dmidecode": self._cmd_dmidecode,
             "reload_config": self._cmd_reload_config,
             "reset_state": self._cmd_reset_state,
             "adaptive_start": self._cmd_adaptive_start,
             "adaptive_stop": self._cmd_adaptive_stop,
-            "adaptive_status": self._cmd_adaptive_status,
         }
 
     def run(self, on_ready=None) -> None:
@@ -132,9 +130,6 @@ class PowerDaemon(CommandsMixin, LoopsMixin, AdaptiveMixin):
                 sock.send_string(resp)
             except zmq.ZMQError as exc:
                 log.error("ZMQ send error: %s", exc)
-            if cmd == "shutdown":
-                log.info("Shutdown command received — exiting.")
-                break
 
         if os.path.exists(cfg.ZMQ_SOCKET_PATH):
             os.unlink(cfg.ZMQ_SOCKET_PATH)

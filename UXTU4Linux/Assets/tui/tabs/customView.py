@@ -15,7 +15,7 @@ from Assets.tuning.custom import (
     unique_preset_name,
 )
 from Assets.tui.modals import ConfirmModal
-from Assets.tui.helpers import ADAPTIVE_ON_MSG, adaptive_running
+from Assets.tui.helpers import ADAPTIVE_ON_MSG
 
 
 class CustomEditor(VerticalScroll):
@@ -136,7 +136,7 @@ class CustomEditor(VerticalScroll):
             self.preset_name = name
             self._do_save(name, replace)
         elif bid == "ed_apply":
-            if adaptive_running():
+            if self.app._last_status.get("adaptive", {}).get("running"):
                 self.app.notify(ADAPTIVE_ON_MSG, title="Adaptive Mode active", severity="warning")
                 return
             self._sync_inputs()

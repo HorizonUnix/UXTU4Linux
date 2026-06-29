@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from textual import work
 from textual.app import ComposeResult
 from textual.containers import Vertical, VerticalScroll
 from textual.widgets import Static
@@ -46,7 +45,7 @@ class StatusTab(VerticalScroll):
         self._stop_timers()
         self._last_ac = on_ac()
         self._watch = self.set_interval(2.0, self._check_power)
-        self._timer = self.set_interval(1.5, self.refresh_status)
+        self._timer = self.set_interval(1.0, self.refresh_status)
 
     def _check_power(self) -> None:
         from Assets.tui.helpers import on_ac
@@ -55,15 +54,11 @@ class StatusTab(VerticalScroll):
             self._last_ac = ac
             self.refresh_status()
 
-    @work(thread=True, exclusive=True, group="status_tab")
     def refresh_status(self) -> None:
-        from Assets.core.ipc import get_client
-        client = get_client()
-        st = client.status()
-        adaptive = client.adaptive_status()
-        self.app.call_from_thread(self._update_panel, st, adaptive)
+        st = self.app._last_status
+        self._draw_status(st, st.get("adaptive", {}))
 
-    def _update_panel(self, st: dict, adaptive: dict) -> None:
+    def _draw_status(self, st: dict, adaptive: dict) -> None:
         panel = self.query_one("#status_info", Static)
         head = self.query_one("#status_smu_head", Static)
         smu = self.query_one("#status_smu", Static)
@@ -88,10 +83,13 @@ class StatusTab(VerticalScroll):
         def row(label, value):
             return f"  {label:<12}{value}"
 
+        backend = st.get("backend", "?")
+
         lines = [
             "[b]System[/b]",
             row("Daemon", "[green]Running[/]"),
             row("Power", "AC" if on_ac else "Battery"),
+            row("Backend", backend),
             "",
             "[b]Preset[/b]",
             row("Active", mode or "[dim]—[/]"),
@@ -127,6 +125,11 @@ class StatusTab(VerticalScroll):
             preset = adaptive.get("preset")
             if preset:
                 lines.append(row("Preset", preset))
+            try:
+                poll = int(cfg.get("Adaptive", "interval", "2") or "2")
+            except ValueError:
+                poll = 2
+            lines.append(row("Poll", f"every {poll}s"))
             applied = adaptive.get("applied")
             if applied:
                 lines.append(row("Applied", applied))

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 
+from textual import work
 from textual.app import ComposeResult
 from textual.containers import Grid, Vertical, VerticalScroll
 from textual.widgets import Button, Static
@@ -63,12 +64,16 @@ class HomeTab(VerticalScroll):
                     yield Button(label, id=f"home-{tab}", variant="primary")
 
     def on_mount(self) -> None:
-        self._poll()
-        self.set_interval(1.0, self._poll)
+        self._run_poll()
+        self.set_interval(1.0, self._run_poll)
 
-    def _poll(self) -> None:
+    @work(thread=True, exclusive=True, group="home_sensors")
+    def _run_poll(self) -> None:
         from Assets.system import sensors
         snapshot = sensors.sample()
+        self.app.call_from_thread(self._render_snapshot, snapshot)
+
+    def _render_snapshot(self, snapshot) -> None:
         for key, title, unit, _rng in self._GRAPHS:
             if key not in self._series:
                 continue

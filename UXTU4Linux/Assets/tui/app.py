@@ -74,7 +74,7 @@ class U4LApp(App):
 
     def on_mount(self) -> None:
         self._apply_theme()
-        self.set_interval(1.5, self.refresh_status)
+        self.set_interval(1.0, self.refresh_status)
         self._start_toast_reaper()
         self.refresh_status()
         self._check_size(self.size)
@@ -198,21 +198,25 @@ class U4LApp(App):
     def on_unmount(self) -> None:
         self._reaper_stop = True
 
+    _last_status: dict = {"ok": False}
+
     @work(thread=True, exclusive=True, group="status")
     def refresh_status(self) -> None:
-        from Assets.tui.helpers import fetch_status
-        st = fetch_status()
+        from Assets.core.ipc import get_client
+        st = get_client().status()
         self.call_from_thread(self._render_status, st)
 
     _warned_offline = False
 
     def _render_status(self, st: dict) -> None:
+        self._last_status = st
+        ok = st.get("ok", False)
         from textual.css.query import NoMatches
         try:
             line = self.query_one("#statusline", Static)
         except NoMatches:
             return
-        if not st.get("ok"):
+        if not ok:
             from Assets.tui.wizard import SetupWizard
             in_setup = isinstance(self.screen, SetupWizard)
             line.display = not in_setup

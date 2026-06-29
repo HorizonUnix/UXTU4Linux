@@ -23,15 +23,6 @@ def get_presets() -> dict:
     return to_dict(preset)
 
 
-def get_all_presets() -> dict:
-    from Assets.tuning.custom import load_custom_presets, preset_to_args
-    presets = dict(get_presets())
-    for p in load_custom_presets():
-        name = p["name"] + "_custom_preset"
-        presets[name] = preset_to_args(p)
-    return presets
-
-
 def apply_preset(args: str, mode: str) -> dict:
     from Assets.core.ipc import get_client
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import glob, os, shutil, subprocess
 from Assets.core import config as cfg
 
@@ -118,14 +120,6 @@ def ryzen_smu_signed() -> bool:
 def _dmi_raw(dmi_type: str) -> str:
     from Assets.core.ipc import get_client
     return get_client().dmidecode(dmi_type)
-
-
-def _dmi(field: str) -> str:
-    for line in _dmi_raw("processor").splitlines():
-        s = line.strip()
-        if s.startswith(f"{field}:"):
-            return s.split(":", 1)[-1].strip()
-    return ""
 
 
 def _extract(raw: str, field: str) -> str:
@@ -474,13 +468,14 @@ def ensure_max_clock() -> None:
 
 
 def detect() -> None:
-    for key, field in {"CPU": "Version", "Signature": "Signature"}.items():
-        cfg.set_config("Info", key, _dmi(field))
+    proc_raw = _dmi_raw("processor")
+    cfg.set_config("Info", "CPU", _extract(proc_raw, "Version"))
+    cfg.set_config("Info", "Signature", _extract(proc_raw, "Signature"))
     _compute_codename()
 
     variant = _detect_framework_variant()
     cfg.set_config("Info", "Variant", variant)
-    cfg.set_config("Info", "MaxClock", str(parse_max_clock(_dmi_raw("processor"))))
+    cfg.set_config("Info", "MaxClock", str(parse_max_clock(proc_raw)))
 
     cfg.save()
 

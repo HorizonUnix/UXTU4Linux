@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 
 from Assets.core import config as cfg
-from Assets.core.ipc import get_client
 
 
 _AC_TYPES = frozenset({"Mains", "USB", "USB_C", "USB_PD", "USB_PD_DRP", "USB_C_DRP"})
@@ -64,25 +63,9 @@ def status_line() -> str:
     return cpu
 
 
-def fetch_status() -> dict:
-    return get_client().status()
-
-
-def do_apply(args: str, mode: str) -> dict:
-    from Assets.tuning.power import apply_preset
-    return apply_preset(args, mode)
-
-
 ADAPTIVE_ON_MSG = (
     "Adaptive Mode is running. Stop it in the Adaptive tab to apply a preset manually."
 )
-
-
-def adaptive_running() -> bool:
-    try:
-        return bool(get_client().adaptive_status().get("running"))
-    except Exception:
-        return False
 
 
 async def ensure_sudo(app) -> bool:

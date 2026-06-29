@@ -77,9 +77,15 @@ class DaemonClient:
             "ok": False,
             "running_loop": False,
             "mode": "?",
+            "args": "",
             "on_ac": False,
             "automation": False,
             "interval": 0,
+            "backend": "?",
+            "last_output": "",
+            "last_rejected": False,
+            "version": "",
+            "adaptive": {"running": False, "preset": "", "applied": ""},
         }
 
     def apply_saved(self) -> dict:
@@ -106,16 +112,6 @@ class DaemonClient:
 
     def adaptive_stop(self) -> dict:
         return self._send({"cmd": "adaptive_stop"}) or {"ok": False}
-
-    def adaptive_status(self) -> dict:
-        return self._send({"cmd": "adaptive_status"}) or {
-            "ok": False,
-            "running": False,
-            "preset": "",
-            "sample": {},
-            "applied": "",
-            "caps": [],
-        }
 
 
 _client: DaemonClient | None = None
