@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import glob, os, shutil, subprocess
+import os, shutil, subprocess
 from Assets.core import config as cfg
+from zenmaster.smu import secure_boot_enabled
 
 
 _SBIN_PATHS = "/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/sbin:/usr/local/bin"
@@ -35,21 +36,19 @@ def check_ryzen_smu() -> str | None:
     if not secure_boot_enabled():
         return None
 
-    from Assets.amd import smu
+    from zenmaster.smu import is_available, module_status
 
-    if smu.is_available() and smu.version_ok():
-        return None
-
-    if smu.is_available() and not smu.version_ok():
-        ver = smu.get_version()
-        req = smu.version_str(smu.MIN_VERSION)
-        if ver == "unknown":
+    if is_available():
+        st = module_status()
+        if st.ok:
+            return None
+        if st.reason == "unknown":
             return (
                 f"ryzen_smu is loaded but its version cannot be determined "
-                f"(minimum required: {req}).\n\n{_SMU_INSTALL_GUIDE}"
+                f"(minimum required: {st.min_version}).\n\n{_SMU_INSTALL_GUIDE}"
             )
         return (
-            f"ryzen_smu version {ver} is too old (minimum required: {req}).\n\n"
+            f"ryzen_smu version {st.version} is too old (minimum required: {st.min_version}).\n\n"
             f"{_SMU_INSTALL_GUIDE}"
         )
 
@@ -73,26 +72,6 @@ def check_ryzen_smu() -> str | None:
         )
 
     return f"ryzen_smu is installed but not loaded.\n\n{_SMU_INSTALL_GUIDE}"
-
-
-def secure_boot_enabled() -> bool:
-    for path in glob.glob("/sys/firmware/efi/efivars/SecureBoot-*"):
-        try:
-            with open(path, "rb") as f:
-                data = f.read()
-            if len(data) >= 5 and data[4] == 1:
-                return True
-        except OSError:
-            pass
-    try:
-        out = subprocess.run(
-            ["mokutil", "--sb-state"],
-            capture_output=True, text=True, timeout=3,
-        ).stdout.lower()
-        return "enabled" in out
-    except Exception:
-        pass
-    return False
 
 
 def ryzen_smu_installed() -> bool:
@@ -349,64 +328,6 @@ def _parse_memory() -> dict[str, str]:
     }
 
 
-def _resolve_codename(cpu: str, cpu_family: int, cpu_model: int) -> tuple[str, str]:
-    if cpu == "Intel":
-        return "Intel", "Intel"
-
-    arch, family = "Unknown", "Unknown"
-
-    if cpu_family == 23:
-        arch = "Zen 1 - Zen 2"
-        match cpu_model:
-            case 1: family = "SummitRidge"
-            case 8: family = "PinnacleRidge"
-            case 17 | 18: family = "RavenRidge"
-            case 24: family = "Picasso"
-            case 32: family = "Pollock" if any(s in cpu for s in ("15e", "15Ce", "20e")) else "Dali"
-            case 80: family = "FireFlight"
-            case 96: family = "Renoir"
-            case 104: family = "Lucienne"
-            case 113: family = "Matisse"
-            case 144 | 145: family = "VanGogh"
-            case 160: family = "Mendocino"
-
-    elif cpu_family == 25:
-        arch = "Zen 3 - Zen 4"
-        match cpu_model:
-            case 33: family = "Vermeer"
-            case 63 | 68: family = "Rembrandt"
-            case 80: family = "Cezanne_Barcelo"
-            case 97: family = "DragonRange" if "HX" in cpu else "Raphael"
-            case 116: family = "PhoenixPoint"
-            case 120: family = "PhoenixPoint2"
-            case 117: family = "HawkPoint"
-            case 124: family = "HawkPoint2"
-
-    elif cpu_family == 26:
-        arch = "Zen 5 - Zen 6"
-        match cpu_model:
-            case 68: family = "FireRange" if "HX" in cpu else "GraniteRidge"
-            case 96: family = "KrackanPoint"
-            case 104: family = "KrackanPoint2"
-            case 32 | 36: family = "StrixPoint"
-            case 112: family = "StrixHalo"
-
-    return arch, family
-
-
-_DESKTOP_FAMILIES = {
-    "SummitRidge", "PinnacleRidge", "Matisse",
-    "Vermeer", "Raphael", "GraniteRidge",
-}
-
-
-def _cpu_type(family: str, arch: str) -> str:
-    if family in _DESKTOP_FAMILIES: return "Amd_Desktop_Cpu"
-    if arch == "Intel": return "Intel"
-    if arch == "Unknown": return "Unknown"
-    return "Amd_Apu"
-
-
 def _lspci_vga() -> str:
     try:
         result = subprocess.run(
@@ -491,11 +412,12 @@ def _compute_codename() -> None:
         cfg.set_config("Info", "Family", "Unknown")
         cfg.set_config("Info", "Type", "Unknown")
         return
-    from Assets.engine.runner import has_smu_support
-    arch, family = _resolve_codename(raw_cpu, cpu_family, cpu_model)
-    cpu_type = _cpu_type(family, arch)
-    if cpu_type in ("Amd_Apu", "Amd_Desktop_Cpu") and not has_smu_support(family):
+    from zenmaster.hardware import resolve
+    from zenmaster.runner import is_supported
+    info = resolve(raw_cpu, cpu_family, cpu_model)
+    cpu_type = info.type
+    if cpu_type in ("Amd_Apu", "Amd_Desktop_Cpu") and not is_supported(info.family):
         cpu_type = "Unknown"
-    cfg.set_config("Info", "Architecture", arch)
-    cfg.set_config("Info", "Family", family)
+    cfg.set_config("Info", "Architecture", info.arch)
+    cfg.set_config("Info", "Family", info.family)
     cfg.set_config("Info", "Type", cpu_type)

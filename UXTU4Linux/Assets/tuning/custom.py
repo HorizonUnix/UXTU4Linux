@@ -599,7 +599,7 @@ def _system_supported(kind: str) -> bool:
 
 
 def _supported_field_keys(family: str, fields: list[dict]) -> set[str]:
-    from Assets.engine import runner
+    from zenmaster import runner
     nv = has_nvidia()
     supported = set()
     for f in fields:

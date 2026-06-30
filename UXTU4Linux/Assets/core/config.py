@@ -5,8 +5,8 @@ import tempfile
 from configparser import ConfigParser
 from pathlib import Path
 
-LOCAL_VERSION = "1.1.0"
-LOCAL_BUILD = "M1-stable-28Jun26-r1"
+LOCAL_VERSION = "1.2.0"
+LOCAL_BUILD = "M1-beta-30Jun26-r2"
 
 GITHUB_API_URL = "https://api.github.com/repos/HorizonUnix/UXTU4Linux/releases/latest"
 LATEST_VER_URL = "https://github.com/HorizonUnix/UXTU4Linux/releases/latest"

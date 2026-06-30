@@ -7,8 +7,6 @@ import re
 from dataclasses import dataclass
 from typing import Optional
 
-from Assets.system import pmtable
-
 log = logging.getLogger(__name__)
 
 HWMON_GLOB = "/sys/class/hwmon/hwmon*"
@@ -200,13 +198,14 @@ def _reconcile(trusted, secondary, tolerance, label):
     return trusted
 
 
+def _read_pmtable():
+    from Assets.core import config as cfg
+    from zenmaster.smu import read_pm_sensors
+    return read_pm_sensors(cfg.get("Info", "Family", ""))
+
+
 def sample():
-    from Assets.amd import smu as _smu
-    if _smu.active_backend() == "pci":
-        from Assets.core import config as _cfg
-        pm = pmtable.read_pci(_cfg.get("Info", "Family", ""))
-    else:
-        pm = pmtable.read()
+    pm = _read_pmtable()
     temp = _reconcile(_cpu_temp(), pm.tctl_temp if pm else None, 5.0, "cpu_temp")
     load = _reconcile(_cpu_load(), pm.cclk_busy if pm else None, 15.0, "cpu_load")
     pm_power = None

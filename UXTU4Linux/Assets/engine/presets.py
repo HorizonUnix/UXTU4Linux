@@ -278,13 +278,13 @@ def _desktop_standard() -> Preset:
     )
 
 
-def _socket_short(family: str) -> str:
-    from Assets.engine.runner import get_socket_short
-    return get_socket_short(family)
+def _socket(family: str) -> str:
+    from zenmaster.runner import get_socket
+    return get_socket(family) or ""
 
 
 def _apu_label(family: str, cpu_model: str) -> str:
-    socket = _socket_short(family)
+    socket = _socket(family)
     if family == "DragonRange":
         return f"AMDAPUDragonRange_{socket}"
     if family == "FireRange":
@@ -299,7 +299,7 @@ def _apu_label(family: str, cpu_model: str) -> str:
 
 
 def _pre_matisse_label(family: str, cpu_model: str) -> str:
-    socket = _socket_short(family)
+    socket = _socket(family)
     if any(s in cpu_model for s in ("U", "e", "Ce")):
         return f"AMDAPUPreMatisse_{socket}_U"
     if "H" in cpu_model:
@@ -312,7 +312,7 @@ def _pre_matisse_label(family: str, cpu_model: str) -> str:
 
 
 def _post_matisse_label(family: str, cpu_model: str) -> str:
-    socket = _socket_short(family)
+    socket = _socket(family)
     if "U" in cpu_model or ("AI" in cpu_model and "HX" not in cpu_model):
         return f"AMDAPUPostMatisse_{socket}_U"
     if "HX" in cpu_model:
@@ -332,7 +332,7 @@ def _desktop_label(family: str, cpu_model: str) -> str:
     parts = cpu_model.split()
     model = next((p for p in reversed(parts) if any(c.isdigit() for c in p)), parts[-1] if parts else "")
     series = parts[0] if parts else ""
-    socket = _socket_short(family)
+    socket = _socket(family)
     era = "PreRaphael" if _before(family, "Raphael") else "PostRaphael"
     if "X3D" in model:
         return f"AMDCPU{era}_{socket}_X3D"

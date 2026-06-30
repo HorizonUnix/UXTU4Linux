@@ -116,7 +116,7 @@ class CommandsMixin:
         return {"ok": True}
 
     def _cmd_status(self, _msg: dict) -> dict:
-        from Assets.amd import smu
+        from zenmaster.smu import active_backend
         on_ac = _on_ac()
         with self._lock:
             status = {
@@ -130,7 +130,7 @@ class CommandsMixin:
                 "last_output": self._last_output,
                 "last_rejected": self._last_rejected,
                 "version": cfg.LOCAL_VERSION,
-                "backend": smu.active_backend(),
+                "backend": active_backend(),
                 "adaptive": {
                     "running": self._adaptive_running,
                     "preset": self._adaptive_preset_name,

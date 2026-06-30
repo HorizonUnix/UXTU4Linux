@@ -122,25 +122,15 @@ def _fmt_duration(seconds: float) -> str:
 _smu_state = {"warned": False}
 
 
-def _smu_blocked() -> str | None:
-    from Assets.amd import smu
-    if smu.active_backend() == "pci":
-        return None
-    if not smu.is_available():
-        return "ryzen_smu is not available"
-    if not smu.version_ok():
-        return f"ryzen_smu {smu.get_version()} is too old (minimum: {smu.version_str(smu.MIN_VERSION)})"
-    return None
-
-
 def _apply_via_smu(args: str, mode: str) -> tuple[str, bool]:
+    from zenmaster.smu import unavailable_reason
     family = cfg.get("Info", "Family")
     if not args.strip():
         return "", False
     if not family:
         log.error("Cannot apply preset: CPU family not set in config — was hardware detected?")
         return "", False
-    blocked = _smu_blocked()
+    blocked = unavailable_reason()
     if blocked:
         if not _smu_state["warned"]:
             _smu_state["warned"] = True

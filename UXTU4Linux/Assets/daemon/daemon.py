@@ -175,8 +175,8 @@ def main() -> None:
     if cfg.get("Info", "Type") == "Intel":
         log.warning("Intel CPU detected — SMU control is not supported; presets will not be applied.")
 
-    from Assets.core.hardware import _find_dmidecode, secure_boot_enabled
-    from Assets.amd import smu
+    from Assets.core.hardware import _find_dmidecode
+    from zenmaster.smu import ensure_backend, module_version, unavailable_reason
 
     dmi = _find_dmidecode()
     if dmi is None:
@@ -190,33 +190,14 @@ def main() -> None:
     arch = cfg.get("Info", "Architecture")
     log.info("CPU: %s, Family: %s, Arch: %s", cpu, fam, arch)
 
-    sb = secure_boot_enabled()
-
-    if not sb:
+    backend = ensure_backend()
+    if backend == "pci":
         log.info("Secure Boot disabled — using PCI direct access backend.")
-        if not smu.init_pci_backend():
-            log.warning("PCI backend unavailable — presets will not be applied.")
+    elif backend:
+        log.info("ryzen_smu driver ready (version %s).", module_version())
     else:
-        if smu.is_available() and smu.version_ok():
-            log.info("Secure Boot enabled — ryzen_smu driver ready (version %s).", smu.get_version())
-        elif smu.is_available() and not smu.version_ok():
-            ver = smu.get_version()
-            if ver == "unknown":
-                log.error("ryzen_smu is loaded but version cannot be determined (minimum: %s).\nInstall guide: %s",
-                          smu.version_str(smu.MIN_VERSION), cfg.RYZEN_SMU_WIKI_URL)
-            else:
-                log.error("ryzen_smu version %s is too old (minimum: %s).\nInstall guide: %s",
-                          ver, smu.version_str(smu.MIN_VERSION), cfg.RYZEN_SMU_WIKI_URL)
-            log.warning("Running without SMU access — presets will not be applied.")
-        else:
-            from Assets.core.hardware import ryzen_smu_installed, ryzen_smu_signed
-            if not ryzen_smu_installed():
-                log.error("ryzen_smu not installed. Required when Secure Boot is enabled.\nInstall guide: %s", cfg.RYZEN_SMU_WIKI_URL)
-            elif not ryzen_smu_signed():
-                log.error("ryzen_smu not signed for Secure Boot.\nInstall guide: %s", cfg.RYZEN_SMU_WIKI_URL)
-            else:
-                log.error("ryzen_smu installed but not loaded.\nInstall guide: %s", cfg.RYZEN_SMU_WIKI_URL)
-            log.warning("Running without SMU access — presets will not be applied.")
+        log.error("%s\nInstall guide: %s", unavailable_reason() or "SMU backend unavailable.", cfg.RYZEN_SMU_WIKI_URL)
+        log.warning("Running without SMU access — presets will not be applied.")
 
     daemon = PowerDaemon()
 
